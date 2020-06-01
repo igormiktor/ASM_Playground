@@ -7,26 +7,15 @@
 *.o
 *.obj
 
-# Precompiled Headers
-*.gch
-*.pch
+# Build products and directories
+*.lst
+*.err
+*.hex
+build
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+## AVR_SIM project files
+*.pro
 
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+# One-of-a-kind ignores
+BugReport*.*
+Ignore
