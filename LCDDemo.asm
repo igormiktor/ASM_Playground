@@ -127,14 +127,12 @@
 
 
 ; **********************************
-;   U S E R   C O N S T A N T S
+;  C O N S T A N T S
 ; **********************************
 
-
-
-; **********************************
-;  F I X E D   C O N S T A N T S
-; **********************************
+; String-related constants
+.equ kDecimalDigits                 = 5
+.equ kHexDigits                     = 6         ; Includes '0x' prefix
 
 ; LCD commands
 .equ kLcdClearDisplay               = 0x01
@@ -336,11 +334,16 @@ NoOffsetRequired:
 .dseg
 .org SRAM_START
 
-sNbrStr:
-    .byte 6                 ; reserve for the output of convertBinWordToAscStr
+sDecNbrStr:
+    .byte 5                                     ; Reserve for the output of convertBinWordToAscStr
+
+sHexNbrStr:
+    .byte 2                                     ; Reserve for leading '0x'
+sHexOutputStr:
+    .byte 4                                     ; Reserve for outpout of convertBinWordToHexStr'
 
 sGreetingStr:
-    .byte 14                ; reserve for greeting to display at start up
+    .byte 14                                    ; Reserve for greeting to display at start up
 
 
 
@@ -422,6 +425,9 @@ dGreeting:
     .db 'W', 'o', 'r', 'l', 'd', '!'
     .equ kdGreetingLen = 12
 
+d0xPrefix:
+    .db '0', 'x'
+    .equ kd0xPrefixLen = 2
 
 
 ; ***************************************
@@ -538,17 +544,32 @@ displayGreetingLoop:
         sei                                     ; Restore interrupts
 
         ; Convert the value to an ASCII string and display
-        ldi ZH, HIGH( sNbrStr )
-        ldi ZL, LOW( sNbrStr )
-        call convertBinWordToAscStr             ; ASCII version in SRAM
+        ldi ZH, HIGH( sDecNbrStr )
+        ldi ZL, LOW( sDecNbrStr )
+        call convertBinWordToAscStr             ; Dec ASCII version in SRAM
         setLcdRowCol 1, 0, rTmp1, rScratch1, rTmp2
-        ldi rTmp1, 5
+        ldi rTmp1, kDecimalDigits
         mov rScratch2, rTmp1
-    displayNbrLoop:
+    displayDecNbrLoop:
             ld rTmp1, Z+                        ; Read the value out of SRAM
             sendLcdData rTmp1, rScratch1, rTmp2
             dec rScratch2
-            brne displayNbrLoop
+            brne displayDecNbrLoop
+
+        ; Convert the value to a hex string and display
+        ldi ZH, HIGH( sHexOutputStr )
+        ldi ZL, LOW( sHexOutputStr )
+        call convertBinWordToHexStr             ; Hex ASCII version in SRAM
+        setLcdRowCol 1, 0x0A, rTmp1, rScratch1, rTmp2
+        ldi ZH, HIGH( sHexNbrStr )              ; Display the string with prefix
+        ldi ZL, LOW( sHexNbrStr )
+        ldi rTmp1, kHexDigits
+        mov rScratch2, rTmp1
+    displayHexNbrLoop:
+            ld rTmp1, Z+                        ; Read the value out of SRAM
+            sendLcdData rTmp1, rScratch1, rTmp2
+            dec rScratch2
+            brne displayHexNbrLoop
 
         rjmp mainLoop                           ; Go back to top of main loop
 
@@ -560,26 +581,38 @@ displayGreetingLoop:
 
 initStaticData:
 
-    ; Copy the greeting string into SRAM
+    ; Copy the static strings into SRAM
 
     ; Z             = pointer to program memory
     ; Y             = pinter to SRAM
     ; rTmp1         = counter
     ; rScratch1     = transfer register
 
+    ; Copy greeting string
     ; Set up pointers to read from PROGMEM to SRAM
-    ldi rTmp1, 13
+    ldi rTmp1, kdGreetingLen
     ldi ZH, HIGH( dGreeting << 1 )
     ldi ZL, LOW( dGreeting << 1 )
     ldi XH, HIGH( sGreetingStr )
     ldi XL, LOW( sGreetingStr )
-
-    ; Actual transfer loop from PROGMEM to SRAM
-initStaticData_1:
+initStaticData_1:                               ; Actual transfer loop from PROGMEM to SRAM
         lpm rScratch1, Z+
         st X+, rScratch1
         dec rTmp1
         brne initStaticData_1
+
+    ; Copy hex prefix
+    ; Set up pointers to read from PROGMEM to SRAM
+    ldi rTmp1, kd0xPrefixLen
+    ldi ZH, HIGH( d0xPrefix << 1 )
+    ldi ZL, LOW( d0xPrefix << 1 )
+    ldi XH, HIGH( sHexNbrStr )
+    ldi XL, LOW( sHexNbrStr )
+    initStaticData_2:                               ; Actual transfer loop from PROGMEM to SRAM
+            lpm rScratch1, Z+
+            st X+, rScratch1
+            dec rTmp1
+            brne initStaticData_2
 
     ret
 
@@ -830,7 +863,7 @@ delayTenthsOfSeconds:
 
 convertBinWordToAscStr:
 
-    ; Convert a 16-bit-binary to a 5 char ASCII string
+    ; Convert a 16-bit-binary to a 5 char decimal ASCII string
 
     ; Registers rBinWordH:rBinWordL and Z passed in as arguments
     ; Result returned in 5-bytes starting where Z points
@@ -952,4 +985,66 @@ getOneBinWordDecDigit2:
 
 getOneBinWordDecDigit3:
 	st Z+, rTmp1                       ; Save digit and increment
+	ret
+
+
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+convertBinWordToHexStr:
+
+; Convert a 16-bit-binary to a 4 char hex ASCII string
+
+; Registers rBinWordH:rBinWordL and Z passed in as arguments
+; Result returned in 4 bytes starting where Z points
+
+; rBinWordH:rBinWordL   = 16-bit quantity to convert (not changed)
+; Z                     = pointer to first (highest) digit of ASCII result
+;                         (1 digit per byte, 4 bytes total, with leading zeros)
+; rTmp1                 = temp (upper) register (changed)
+
+	mov rTmp1, rBinWordH                           ; Load MSB
+	rcall Bin1ToHex2                               ; Convert byte
+	mov rTmp1, rBinWordL                           ; Repeat on LSB
+	rcall Bin1ToHex2
+	sbiw ZL, 4                                     ; Reset Z to start
+
+	ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+Bin1ToHex2:
+
+; Convert an 8-bit-binary to 2-char uppercase hex string
+
+; Registers rBinWordH:rBinWordL and Z passed in as arguments
+; Result returned in 4 bytes starting where Z points
+
+; rBinWordH:rBinWordL   = 16-bit quantity to convert (not changed)
+; Z                     = pointer to first (highest) digit of ASCII result
+;                         (1 digit per byte, 4 bytes total, with leading zeros)
+; rTmp1                 = temp (upper) register (changed)
+
+	push rTmp1                                     ; Save byte
+	swap rTmp1                                     ; Move Upper to lower nibble
+	rcall Bin1ToHex1                               ; Convenience to make this a function all
+	pop rTmp1                                      ; Restore byte and fall through (instead of another rcall)
+
+Bin1ToHex1:
+	andi rTmp1, 0x0F                               ; Mask upper nibble
+	subi rTmp1, -'0'                               ; Add 0 to convert to ASCII 0-9
+	cpi rTmp1, '9' + 1                             ; Is it A..F?
+	brcs Bin1ToHex1a
+	subi rTmp1, -7                                 ; Add 7 for A..F
+Bin1ToHex1a:
+	st z+, rTmp1                                   ; Store a hex digit
+
 	ret
