@@ -2,29 +2,32 @@
 
 Various small examples that program AVR microcontrollers entirely in assembler.
 
-This is the results of using some of my "stay at home" time to (re)experience the
-fun of coding directly on hardware.  This is equally involves hardware, from
-building the circuits that successfully power-up and run a bare naked
+This is the result of using some of my "stay at home" time to (re)experience the
+fun of coding directly on hardware.  This project involves both software as well as
+hardware, from building the circuits that successfully power-up and run a bare naked
 microcontroller chip, to figuring out how to burn code
-onto them and building a suitable set of circuits for that.  
+onto the microcontrollers, and building a suitable set of circuits for each effort.  
 
-The code is entirely in assembler, so interrupt tables, static data, and everything else are set up explicitly in assembler.
+The code is entirely in assembler, so interrupt tables, static data, and everything else
+are set up explicitly in assembler.
 
-Note that all examples (so far) use ATmega328p chips configured (using an external oscillator) to run at 16 MHz.
+Note that all examples (so far) use ATmega328p chips configured (using an external oscillator)
+to run at 16 MHz.
 
 The various examples projects are:
 
 ## FirstBurnCode
 
-Very simple code that I use when burning code on a new chip just to verify basic operation.  This code:
+Very simple code that I use when burning an executable on a new chip to verify basic
+operation.  This code:
 * Blinks an LED connected to PB0 at 1 Hz.
 * Blinking is done using timer-triggered interrupts to toggle PB0 output on and off.
 
 ## FirstBurnCodeAlt
 
-An alternate version of the first burn code that makes it easier to confirm (in a crude but not-so-crude way) that the chip is running at 16 MHz.  This code:
+An alternate version of the first burn code that makes it easier to confirm (in a crude but not-so-crude way) that the chip is running at about 16 MHz.  This code:
 * Blinks two LEDs (PB0 and PB1) at 1 Hz on opposite duty cycles.
-* Blinking is done using timer-triggered interrupts to toggle PB0 output on and off.
+* Blinking is done using timer-triggered interrupts to toggle PB0 and PB1 output on and off.
 * Both LEDs flash on for 2 seconds at the start to confirm they both work.
 * Blinking starts with PB0, alternating every second with PB1.
 
@@ -32,9 +35,9 @@ This code enables a very easy way to check the chip is running at pretty close t
 While this approach won't detect a chip running at 16.0000001Mhz, it suffices, if left running
 long enough, to easily detect errors in software configuration (e.g., bad fuse bit settings or
 wrong scalar) or hardware configuration (bad wiring, wrong oscillator, or wrong type of
-oscillator.
+oscillator).
 
-The way to use this code to test timing is:
+The way to use this code to test the chip's clock is:
 1. Prepare a stop-watch on your phone.
 2. Start the code running, after both LEDs flash off get ready to start the stop-watch.
 3. Start the stop-watch when PB0 comes on.  Note that PB0 will be on during even seconds, and PB1 will be on during odd seconds.
@@ -46,8 +49,7 @@ The way to use this code to test timing is:
 A more complicated program that runs a plain vanilla 16x2 LCD.  This code:
 *  Displays a "Hello World!" greeting message on the top row of the LCD
 *  Maintains a simple 16-bit counter that counts elapsed seconds.
-*  Displays the number of elapsed seconds in decimal form on the bottom row.
-
-Potential future addition:  also display the elapsed seconds in hex on the bottom row
-(there's enough room for both:  5 digits for the decimal display and 8 digits for
-the hex display, with three blank spaces between them)
+*  Displays the number of elapsed seconds in decimal form on the left side
+of the bottom row.
+*  Displays the number of elapsed seconds in hexadecimal form (with leading
+'0x') on the right side of the bottom row.
