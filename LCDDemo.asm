@@ -336,15 +336,20 @@ NoOffsetRequired:
 
 sDecNbrStr:
     .byte 5                                     ; Reserve for the output of convertBinWordToAscStr
+sDecNbrStrEnd:
+.equ ksDecNbrStrLen = sDecNbrStrEnd - sDecNbrStr
 
 sHexNbrStr:
-    .byte 2                                     ; Reserve for leading '0x'
+    .byte 2                                      ; Reserve for leading '0x'
 sHexOutputStr:
     .byte 4                                     ; Reserve for outpout of convertBinWordToHexStr'
+sHexNbrStrEnd:
+.equ ksHexNbrStrEnd = sHexNbrStrEnd - sHexNbrStr
 
 sGreetingStr:
-    .byte 14                                    ; Reserve for greeting to display at start up
-
+    .byte 12                                    ; Reserve for greeting to display at start up
+sGreetingStrEnd:
+.equ ksGreetingStrEd = sGreetingStrEnd - sGreetingStr
 
 
 ; **********************************
@@ -423,11 +428,13 @@ sGreetingStr:
 dGreeting:
     .db 'H', 'e', 'l', 'l', 'o', ' '
     .db 'W', 'o', 'r', 'l', 'd', '!'
-    .equ kdGreetingLen = 12
+dGreetingEnd:
+.equ kdGreetingLen = dGreetingEnd - dGreeting
 
 d0xPrefix:
     .db '0', 'x'
-    .equ kd0xPrefixLen = 2
+d0xPrefixEnd:
+.equ kd0xPrefixLen = d0xPrefixEnd - d0xPrefix
 
 
 ; ***************************************
