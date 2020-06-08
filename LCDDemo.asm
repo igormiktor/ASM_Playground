@@ -337,12 +337,12 @@ dGreeting:
     .db 'H', 'e', 'l', 'l', 'o', ' '
     .db 'W', 'o', 'r', 'l', 'd', '!'
 dGreetingEnd:
-.equ kdGreetingLen = dGreetingEnd - dGreeting
+.equ kdGreetingLen = 2 * ( dGreetingEnd - dGreeting )
 
 d0xPrefix:
     .db '0', 'x'
 d0xPrefixEnd:
-.equ kd0xPrefixLen = d0xPrefixEnd - d0xPrefix
+.equ kd0xPrefixLen = 2 * ( d0xPrefixEnd - d0xPrefix )
 
 
 ; ***************************************
