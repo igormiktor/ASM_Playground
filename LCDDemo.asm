@@ -182,10 +182,12 @@
 ; ***************************************
 
 .def rScratch1      = r2                        ; Scratch (low) register
-.def rScratch2      = r3
+.def rScratch2      = r3                        ; Scratch (low) register
 
 .def rBinWordL      = r4                        ; Argument for ASCII conversion
 .def rBinWordH      = r5                        ; Argument for ASCII conversion
+
+.def rLoop1         = r14                       ; Loop counter
 
 .def rSREG          = r15                       ; Save/Restore status port
 
@@ -222,105 +224,11 @@
 ;  M A C R O
 ; **********************************
 
-; Arguments:  @0 = tmp reg (upper half), @1 = tmp reg (any), @2 = tmp reg (upper half)
+; Arguments:  none
 .macro clearLcd
 
-    ldi @0, kLcdClearDisplay
-    sendLcdCmd @0, @1, @2
-
-.endm
-
-
-
-; **********************************
-;  M A C R O
-; **********************************
-
-; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
-.macro setLcdRowCol
-
-    ldi @2, @1                                  ; Load the col
-    clr @4
-    cpi @4, @0                                  ; Compare row to 0
-    breq NoOffsetRequired                       ; If row == 0, skip offset
-    ldi @4, kLcdSecondRowOffset
-    add @2, @4                                  ; Add the offset for second row
-NoOffsetRequired:
-    ori @2, kLcdSetDdramAddr                    ; add the command itself
-    sendLcdCmd @2, @3, @4
-
-.endm
-
-
-
-; **********************************
-;  M A C R O
-; **********************************
-
-; Arguments:  @0 = reg with 8-bit cmd, @1 = tmp reg (any), @2 = tmp reg (upper half)
-.macro sendLcdCmd
-
-    cbi pLcdDataSelectPort, pLcdDataSelectPortBit           ; Pin off to send command
-    mov @1, @0                                              ; Prep the upper nibble
-    lsr @1
-    lsr @1
-    lsr @1
-    lsr @1
-    write4bits @1, @2                                        ; Send the upper nibble
-    write4bits @0, @2                                        ; Send the lower nibble
-
-.endm
-
-
-
-; **********************************
-;  M A C R O
-; **********************************
-
-; Arguments:  @0 = reg with 8-bit data, @1 = tmp reg (any), @2 = tmp reg to use (upper half)
-.macro sendLcdData
-
-    sbi pLcdDataSelectPort, pLcdDataSelectPortBit   ; Pin on to send data
-    mov @1, @0                                      ; Prep the upper nibble
-    lsr @1
-    lsr @1
-    lsr @1
-    lsr @1
-    write4bits @1, @2                               ; Send the upper nibble
-    write4bits @0, @2                               ; Send the lower nibble
-
-.endm
-
-
-
-; **********************************
-;  M A C R O
-; **********************************
-
-; Arguments:  @0 = reg with 4-bit value, @1 = tmp reg (upper half)
-.macro write4bits
-
-    ; First write the pins with the 4-bit value;
-    ; The 4 pins are on the lower nibble of a single PORT
-    ldi @1, 0x0F                                ; @0 might not be an upper reg so do it this way
-    and @0, @1                                  ; Mask out just the lower nibble of @0
-    in @1, pLcdD4Port
-    andi @1, 0xF0                               ; Save just the upper nibble of PORTC in @1
-    or @0, @1                                   ; Combine upper nibble of PORTC with lower nibble value
-    out pLcdD4Port, @0
-
-    ; Now pulse the enable pin to have the LCD read the value
-    cbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin LOW
-    clr rArgByte1
-    ldi rArgByte0, 2
-    call delayMicroSeconds
-    sbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin HIGH (actual enable pulse)
-    ldi rArgByte0, 2
-    call delayMicroSeconds                      ; Enable pulse must be > 450ns
-    cbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin LOW
-    ldi rArgByte1, HIGH( 100 )
-    ldi rArgByte0, LOW( 100 )                   ; Seems like a lot but didn't work with 70us
-    call delayMicroSeconds                      ; Command needs > 37us to settle
+    ldi rArgByte0, kLcdClearDisplay
+    call sendCmdToLcd
 
 .endm
 
@@ -493,15 +401,17 @@ main:
     sbi pRedLedPort, pRedLedPortBit             ; Red LED on
 
     ; Display the greeting on the screen
-    setLcdRowCol 0, 0, rTmp1, rScratch1, rTmp2
-    ldi ZH, HIGH( sGreetingStr )
-    ldi ZL, LOW( sGreetingStr )                 ; Read the greeting out of SRAM
+    clr rArgByte0
+    clr rArgByte1
+    call setLcdRowCol
+    ldi ZH, High( sGreetingStr )
+    ldi ZL, Low( sGreetingStr )                 ; Read the greeting out of SRAM
     ldi rTmp1, ( kdGreetingLen - 1 )
-    mov rScratch2, rTmp1
+    mov rLoop1, rTmp1
 displayGreetingLoop:
-        ld rTmp1, Z+
-        sendLcdData rTmp1, rScratch1, rTmp2
-        dec rScratch2
+        ld rArgByte0, Z+
+        rcall sendDataToLcd
+        dec rLoop1
         brne displayGreetingLoop
 
     ; Pause (see both LEDs working)
@@ -554,28 +464,36 @@ displayGreetingLoop:
         ldi ZH, HIGH( sDecNbrStr )
         ldi ZL, LOW( sDecNbrStr )
         call convertBinWordToAscStr             ; Dec ASCII version in SRAM
-        setLcdRowCol 1, 0, rTmp1, rScratch1, rTmp2
+        ldi rArgByte0, 1
+        ldi rArgByte1, 1
+        ; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
+;        setLcdRowColM 1, 0, rTmp1, @rScratch1, rTmp2
+        rcall setLcdRowCol
         ldi rTmp1, kDecimalDigits
-        mov rScratch2, rTmp1
+        mov rLoop1, rTmp1
     displayDecNbrLoop:
-            ld rTmp1, Z+                        ; Read the value out of SRAM
-            sendLcdData rTmp1, rScratch1, rTmp2
-            dec rScratch2
+            ld rArgByte0, Z+                    ; Read the value out of SRAM
+            rcall sendDataToLcd
+            dec rLoop1
             brne displayDecNbrLoop
 
         ; Convert the value to a hex string and display
         ldi ZH, HIGH( sHexOutputStr )
         ldi ZL, LOW( sHexOutputStr )
         call convertBinWordToHexStr             ; Hex ASCII version in SRAM
-        setLcdRowCol 1, 0x0A, rTmp1, rScratch1, rTmp2
+        ldi rArgByte0, 1
+        ldi rArgByte1, 0x09
+        ; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
+;        setLcdRowColM 1, 0x0A, rTmp1, @rScratch1, rTmp2
+        rcall setLcdRowCol
         ldi ZH, HIGH( sHexNbrStr )              ; Display the string with prefix
         ldi ZL, LOW( sHexNbrStr )
         ldi rTmp1, kHexDigits
-        mov rScratch2, rTmp1
+        mov rLoop1, rTmp1
     displayHexNbrLoop:
-            ld rTmp1, Z+                        ; Read the value out of SRAM
-            sendLcdData rTmp1, rScratch1, rTmp2
-            dec rScratch2
+            ld rArgByte0, Z+                    ; Read the value out of SRAM
+            rcall sendDataToLcd
+            dec rLoop1
             brne displayHexNbrLoop
 
         rjmp mainLoop                           ; Go back to top of main loop
@@ -642,8 +560,8 @@ initializeLcd:
     ; Need to send 0x03 three times
 
     ; First time
-    ldi rTmp1, 0x03
-    write4bits rTmp1, rTmp2
+    ldi rArgByte0, 0x03
+    rcall write4BitsToLcd
 
     ; Wait > 4.1 ms
     ldi rArgByte1, HIGH( 4500 )
@@ -651,8 +569,8 @@ initializeLcd:
     call delayMicroSeconds
 
     ; Second time
-    ldi rTmp1, 0x03
-    write4bits rTmp1, rTmp2
+    ldi rArgByte0, 0x03
+    rcall write4BitsToLcd
 
     ; Wait > 4.1 ms
     ldi rArgByte1, HIGH( 4500 )
@@ -660,36 +578,127 @@ initializeLcd:
     call delayMicroSeconds
 
     ; Third try and go...
-    ldi rTmp1, 0x03
-    write4bits rTmp1, rTmp2
+    ldi rArgByte0, 0x03
+    rcall write4BitsToLcd
 
     ; Wait >150 us
-    ldi rArgByte1, HIGH( 200 )
-    ldi rArgByte0, LOW( 200 )
+    ldi rArgByte1, High( 200 )
+    ldi rArgByte0, Low( 200 )
     call delayMicroSeconds
 
     ; This actually sets the 4-bit interface
-    ldi rTmp1, 0x02
-    write4bits rTmp1, rTmp2
+    ldi rArgByte0, 0x02
+    rcall write4BitsToLcd
 
     ; Set nbr of lines and font
-    ldi rTmp1, ( kLcdFunctionSet | kLcd2Line | kLcd5x8Dots )
-    sendLcdCmd rTmp1, rScratch1, rTmp2
+    ldi rArgByte0, ( kLcdFunctionSet | kLcd2Line | kLcd5x8Dots )
+    rcall sendCmdToLcd
 
     ; Turn on display, with cursor off and blinking off
-    ldi rTmp1, kLcdDisplayControl | kLcdDisplayOn | kLcdCursorOff | kLcdBlinkOff
-    sendLcdCmd rTmp1, rScratch1, rTmp2
+    ldi rArgByte0, kLcdDisplayControl | kLcdDisplayOn | kLcdCursorOff | kLcdBlinkOff
+    rcall sendCmdToLcd
 
     ; Set text entry more (L to R)
-    ldi rTmp1, kLcdEntryModeSet | kLcdEntryLeft
-    sendLcdCmd rTmp1, rScratch1, rTmp2
+    ldi rArgByte0, kLcdEntryModeSet | kLcdEntryLeft
+    rcall sendCmdToLcd
 
     ; Clear display
-    ldi rTmp1, kLcdClearDisplay
-    sendLcdCmd rTmp1, rScratch1, rTmp2
-    ldi rArgByte1, HIGH( 2000 )
-    ldi rArgByte0, LOW( 2000 )
+    ldi rArgByte0, kLcdClearDisplay
+    rcall sendCmdToLcd
+    ldi rArgByte1, High( 2000 )
+    ldi rArgByte0, Low( 2000 )
     call delayMicroSeconds           ; Clear cmd takes a long time...
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+write4BitsToLcd:
+
+    ; Register rArgByte0 is passed as parameter (the 4-bits to write)
+
+    ; rArgByte0 = the 4-bits to write to the LCD in lower nibble (modified)
+    ; rTmp1 used as a temporary register
+
+    ; First write the pins with the 4-bit value;
+    ; The 4 pins are on the lower nibble of a single PORT
+    andi rArgByte0, 0x0F                        ; Mask out just the lower nibble
+    in rTmp1, pLcdD4Port
+    andi rTmp1, 0xF0                            ; Save just the upper nibble of PORTC in @1
+    or rArgByte0, rTmp1                         ; Combine upper nibble of PORTC with lower nibble value
+    out pLcdD4Port, rArgByte0
+
+    ; Now pulse the enable pin to have the LCD read the value
+    cbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin LOW
+    clr rArgByte1
+    ldi rArgByte0, 2
+    call delayMicroSeconds
+    sbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin HIGH (actual enable pulse)
+    ldi rArgByte0, 2
+    call delayMicroSeconds                      ; Enable pulse must be > 450ns
+    cbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin LOW
+    ldi rArgByte1, HIGH( 100 )
+    ldi rArgByte0, LOW( 100 )                   ; Seems like a lot but didn't work with 70us
+    call delayMicroSeconds                      ; Command needs > 37us to settle
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+sendDataToLcd:
+
+    ; Register rArgByte0 is passed as parameter (the 4-bits to write)
+
+    ; rArgByte0 = the 4-bits to write to the LCD in lower nibble (modified)
+    ; rScratch1 used as a temporary register
+    ; (rTmp1 used as a temporary by write4BitsToLcd)
+
+
+    sbi pLcdDataSelectPort, pLcdDataSelectPortBit   ; Pin on to send data
+    rjmp send8BitsToLcd
+
+sendCmdToLcd:
+
+    cbi pLcdDataSelectPort, pLcdDataSelectPortBit   ; Pin off to send command
+    ; Intentional fall through
+
+send8BitsToLcd:
+    mov rScratch1, rArgByte0                        ; Save the value
+    swap rArgByte0
+    rcall write4BitsToLcd                           ; Send the upper nibble
+    mov rArgByte0, rScratch1                        ; Restore the value
+    rcall write4BitsToLcd                           ; Send the lower nibble
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+setLcdRowCol:
+
+    ; rArgByte0 and rArgByte1 passed as parameters (row, col)
+
+    ; rArgByte0 = LCD row (0-1)
+    ; rArgByte1 = LCD col (0-15)
+
+    cpi rArgByte0, 0                            ; Compare row to 0
+    breq NoOffsetRequired                       ; If row == 0, skip offset
+    subi rArgByte1, -kLcdSecondRowOffset        ; Add the offset for second row to column
+NoOffsetRequired:
+    ori rArgByte1, kLcdSetDdramAddr             ; Incorporate the command itself
+    mov rArgByte0, rArgByte1                    ; Move the cmd to rArgByte0
+    rcall sendCmdToLcd
 
     ret
 
