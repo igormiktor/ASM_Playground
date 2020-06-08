@@ -466,8 +466,6 @@ displayGreetingLoop:
         call convertBinWordToAscStr             ; Dec ASCII version in SRAM
         ldi rArgByte0, 1
         ldi rArgByte1, 1
-        ; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
-;        setLcdRowColM 1, 0, rTmp1, @rScratch1, rTmp2
         rcall setLcdRowCol
         ldi rTmp1, kDecimalDigits
         mov rLoop1, rTmp1
@@ -483,8 +481,6 @@ displayGreetingLoop:
         call convertBinWordToHexStr             ; Hex ASCII version in SRAM
         ldi rArgByte0, 1
         ldi rArgByte1, 0x09
-        ; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
-;        setLcdRowColM 1, 0x0A, rTmp1, @rScratch1, rTmp2
         rcall setLcdRowCol
         ldi ZH, HIGH( sHexNbrStr )              ; Display the string with prefix
         ldi ZL, LOW( sHexNbrStr )
