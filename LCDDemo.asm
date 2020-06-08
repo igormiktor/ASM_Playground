@@ -248,7 +248,7 @@ sDecNbrStrEnd:
 .equ ksDecNbrStrLen = sDecNbrStrEnd - sDecNbrStr
 
 sHexNbrStr:
-    .byte 2                                      ; Reserve for leading '0x'
+    .byte 2                                     ; Reserve for leading '0x'
 sHexOutputStr:
     .byte 4                                     ; Reserve for outpout of convertBinWordToHexStr'
 sHexNbrStrEnd:
