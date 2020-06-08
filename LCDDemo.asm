@@ -184,10 +184,10 @@
 .def rScratch1      = r2                        ; Scratch (low) register
 .def rScratch2      = r3                        ; Scratch (low) register
 
-.def rLoop1         = r4                        ; Loop counter
-
 .def rBinWordL      = r4                        ; Argument for ASCII conversion
 .def rBinWordH      = r5                        ; Argument for ASCII conversion
+
+.def rLoop1         = r14                       ; Loop counter
 
 .def rSREG          = r15                       ; Save/Restore status port
 
@@ -224,7 +224,7 @@
 ;  M A C R O
 ; **********************************
 
-; Arguments:  @0 = tmp reg (upper half), @1 = tmp reg (any), @2 = tmp reg (upper half)
+; Arguments:  none
 .macro clearLcd
 
     ldi rArgByte0, kLcdClearDisplay
@@ -458,7 +458,9 @@ displayGreetingLoop:
         ldi ZL, LOW( sDecNbrStr )
         call convertBinWordToAscStr             ; Dec ASCII version in SRAM
         ldi rArgByte0, 1
-        ldi rArgByte1, 2
+        ldi rArgByte1, 1
+        ; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
+;        setLcdRowColM 1, 0, rTmp1, @rScratch1, rTmp2
         rcall setLcdRowCol
         ldi rTmp1, kDecimalDigits
         mov rLoop1, rTmp1
@@ -473,7 +475,9 @@ displayGreetingLoop:
         ldi ZL, LOW( sHexOutputStr )
         call convertBinWordToHexStr             ; Hex ASCII version in SRAM
         ldi rArgByte0, 1
-        ldi rArgByte1, 0x0A
+        ldi rArgByte1, 0x09
+        ; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
+;        setLcdRowColM 1, 0x0A, rTmp1, @rScratch1, rTmp2
         rcall setLcdRowCol
         ldi ZH, HIGH( sHexNbrStr )              ; Display the string with prefix
         ldi ZL, LOW( sHexNbrStr )
@@ -681,13 +685,12 @@ setLcdRowCol:
     ; rArgByte0 = LCD row (0-1)
     ; rArgByte1 = LCD col (0-15)
 
-    ; Arguments:  @0 = row, @1 = col, @2 = tmp reg (upper half), @3 = tmp reg (any), @4 = tmp reg (upper half)
     cpi rArgByte0, 0                            ; Compare row to 0
     breq NoOffsetRequired                       ; If row == 0, skip offset
     subi rArgByte1, -kLcdSecondRowOffset        ; Add the offset for second row to column
 NoOffsetRequired:
     ori rArgByte1, kLcdSetDdramAddr             ; Incorporate the command itself
-    mov rArgByte1, rArgByte0                    ; Move the cmd to rArgByte0
+    mov rArgByte0, rArgByte1                    ; Move the cmd to rArgByte0
     rcall sendCmdToLcd
 
     ret
