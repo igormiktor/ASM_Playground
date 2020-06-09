@@ -424,7 +424,10 @@ displayGreetingLoop:
     ldi rArgByte0, kPauseTime
     rcall delayTenthsOfSeconds                  ; Pause before we start blinking them
 
+    clr rBinWordH
+    clr rBinWordL
     sbi pRedLedPort, pRedLedPortBit             ; Red (PB0) LED on
+    rcall displayCountOnLcd                     ; Zero counter display on LCD
 
     ; Load the CompA/CompB "top" counter values, 16-bit value must be loaded high-byte first
     ldi rTmp1, High( kCompATop )                 ; Always load high byte first
@@ -455,42 +458,12 @@ displayGreetingLoop:
         clt                                     ; Clear T flag
 
         ; Read the counter value to display on the LCD...
-        mov rBinWordL, rCounterLSB
         mov rBinWordH, rCounterMSB
+        mov rBinWordL, rCounterLSB
 
         sei                                     ; Restore interrupts
 
-        ; Convert the value to an ASCII string and display
-        ldi ZH, HIGH( sDecNbrStr )
-        ldi ZL, LOW( sDecNbrStr )
-        call convertBinWordToAscStr             ; Dec ASCII version in SRAM
-        ldi rArgByte0, 1
-        ldi rArgByte1, 1
-        rcall setLcdRowCol
-        ldi rTmp1, kDecimalDigits
-        mov rLoop1, rTmp1
-    displayDecNbrLoop:
-            ld rArgByte0, Z+                    ; Read the value out of SRAM
-            rcall sendDataToLcd
-            dec rLoop1
-            brne displayDecNbrLoop
-
-        ; Convert the value to a hex string and display
-        ldi ZH, HIGH( sHexOutputStr )
-        ldi ZL, LOW( sHexOutputStr )
-        call convertBinWordToHexStr             ; Hex ASCII version in SRAM
-        ldi rArgByte0, 1
-        ldi rArgByte1, 0x09
-        rcall setLcdRowCol
-        ldi ZH, HIGH( sHexNbrStr )              ; Display the string with prefix
-        ldi ZL, LOW( sHexNbrStr )
-        ldi rTmp1, kHexDigits
-        mov rLoop1, rTmp1
-    displayHexNbrLoop:
-            ld rArgByte0, Z+                    ; Read the value out of SRAM
-            rcall sendDataToLcd
-            dec rLoop1
-            brne displayHexNbrLoop
+        rcall displayCountOnLcd                 ; Update counter display on LCD
 
         rjmp mainLoop                           ; Go back to top of main loop
 
@@ -695,6 +668,56 @@ NoOffsetRequired:
     ori rArgByte1, kLcdSetDdramAddr             ; Incorporate the command itself
     mov rArgByte0, rArgByte1                    ; Move the cmd to rArgByte0
     rcall sendCmdToLcd
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+displayCountOnLcd:
+
+    ; rBinWordH:rBinWordL passed as parameters (16-bit count value)
+
+    ; rBinWordL = count value LSB
+    ; rBinWordH = count value MSB
+
+    ; Z         = pointer to SRAM strings
+    ; Used registers:  rTmp1, rArgByte0, rArgByte1, rScratch1, rScratch2
+
+    ; Convert the value to an ASCII string and display
+    ldi ZH, HIGH( sDecNbrStr )
+    ldi ZL, LOW( sDecNbrStr )
+    call convertBinWordToAscStr             ; Dec ASCII version in SRAM
+    ldi rArgByte0, 1
+    ldi rArgByte1, 1
+    rcall setLcdRowCol
+    ldi rTmp1, kDecimalDigits
+    mov rLoop1, rTmp1
+displayDecNbrLoop:
+        ld rArgByte0, Z+                    ; Read the value out of SRAM
+        rcall sendDataToLcd
+        dec rLoop1
+        brne displayDecNbrLoop
+
+    ; Convert the value to a hex string and display
+    ldi ZH, HIGH( sHexOutputStr )
+    ldi ZL, LOW( sHexOutputStr )
+    call convertBinWordToHexStr             ; Hex ASCII version in SRAM
+    ldi rArgByte0, 1
+    ldi rArgByte1, 0x09
+    rcall setLcdRowCol
+    ldi ZH, HIGH( sHexNbrStr )              ; Display the string with prefix
+    ldi ZL, LOW( sHexNbrStr )
+    ldi rTmp1, kHexDigits
+    mov rLoop1, rTmp1
+displayHexNbrLoop:
+        ld rArgByte0, Z+                    ; Read the value out of SRAM
+        rcall sendDataToLcd
+        dec rLoop1
+        brne displayHexNbrLoop
 
     ret
 
