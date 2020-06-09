@@ -224,6 +224,20 @@
 ;  M A C R O
 ; **********************************
 
+; Arguments:  @0 = register base name, @1 = 16-bit constant
+.macro ldiw
+
+   ldi @0H, High( @1 )
+   ldi @0L, Low( @1 )
+
+.endm
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
 ; Arguments:  none
 .macro clearLcd
 
@@ -404,8 +418,7 @@ main:
     clr rArgByte0
     clr rArgByte1
     call setLcdRowCol
-    ldi ZH, High( sGreetingStr )
-    ldi ZL, Low( sGreetingStr )                 ; Read the greeting out of SRAM
+    ldiw Z, sGreetingStr                        ; Read the greeting out of SRAM
     ldi rTmp1, ( kdGreetingLen - 1 )
     mov rLoop1, rTmp1
 displayGreetingLoop:
@@ -478,17 +491,15 @@ initStaticData:
     ; Copy the static strings into SRAM
 
     ; Z             = pointer to program memory
-    ; Y             = pinter to SRAM
+    ; X             = pointer to SRAM
     ; rTmp1         = counter
     ; rScratch1     = transfer register
 
     ; Copy greeting string
     ; Set up pointers to read from PROGMEM to SRAM
     ldi rTmp1, kdGreetingLen
-    ldi ZH, HIGH( dGreeting << 1 )
-    ldi ZL, LOW( dGreeting << 1 )
-    ldi XH, HIGH( sGreetingStr )
-    ldi XL, LOW( sGreetingStr )
+    ldiw Z, dGreeting << 1
+    ldiw X, sGreetingStr
 initStaticData_1:                               ; Actual transfer loop from PROGMEM to SRAM
         lpm rScratch1, Z+
         st X+, rScratch1
@@ -498,11 +509,9 @@ initStaticData_1:                               ; Actual transfer loop from PROG
     ; Copy hex prefix
     ; Set up pointers to read from PROGMEM to SRAM
     ldi rTmp1, kd0xPrefixLen
-    ldi ZH, HIGH( d0xPrefix << 1 )
-    ldi ZL, LOW( d0xPrefix << 1 )
-    ldi XH, HIGH( sHexNbrStr )
-    ldi XL, LOW( sHexNbrStr )
-    initStaticData_2:                               ; Actual transfer loop from PROGMEM to SRAM
+    ldiw Z, d0xPrefix << 1
+    ldiw X, sHexNbrStr
+initStaticData_2:                               ; Actual transfer loop from PROGMEM to SRAM
             lpm rScratch1, Z+
             st X+, rScratch1
             dec rTmp1
@@ -533,8 +542,8 @@ initializeLcd:
     rcall write4BitsToLcd
 
     ; Wait > 4.1 ms
-    ldi rArgByte1, HIGH( 4500 )
-    ldi rArgByte0, LOW( 4500 )
+    ldi rArgByte1, High( 4500 )
+    ldi rArgByte0, Low( 4500 )
     call delayMicroSeconds
 
     ; Second time
@@ -542,8 +551,8 @@ initializeLcd:
     rcall write4BitsToLcd
 
     ; Wait > 4.1 ms
-    ldi rArgByte1, HIGH( 4500 )
-    ldi rArgByte0, LOW( 4500 )
+    ldi rArgByte1, High( 4500 )
+    ldi rArgByte0, Low( 4500 )
     call delayMicroSeconds
 
     ; Third try and go...
@@ -610,8 +619,8 @@ write4BitsToLcd:
     ldi rArgByte0, 2
     call delayMicroSeconds                      ; Enable pulse must be > 450ns
     cbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin LOW
-    ldi rArgByte1, HIGH( 100 )
-    ldi rArgByte0, LOW( 100 )                   ; Seems like a lot but didn't work with 70us
+    ldi rArgByte1, High( 100 )
+    ldi rArgByte0, Low( 100 )                   ; Seems like a lot but didn't work with 70us
     call delayMicroSeconds                      ; Command needs > 37us to settle
 
     ret
@@ -688,8 +697,7 @@ displayCountOnLcd:
     ; Used registers:  rTmp1, rArgByte0, rArgByte1, rScratch1, rScratch2
 
     ; Convert the value to an ASCII string and display
-    ldi ZH, HIGH( sDecNbrStr )
-    ldi ZL, LOW( sDecNbrStr )
+    ldiw Z, sDecNbrStr
     call convertBinWordToAscStr             ; Dec ASCII version in SRAM
     ldi rArgByte0, 1
     ldi rArgByte1, 1
@@ -703,14 +711,12 @@ displayDecNbrLoop:
         brne displayDecNbrLoop
 
     ; Convert the value to a hex string and display
-    ldi ZH, HIGH( sHexOutputStr )
-    ldi ZL, LOW( sHexOutputStr )
+    ldiw Z, sHexOutputStr
     call convertBinWordToHexStr             ; Hex ASCII version in SRAM
     ldi rArgByte0, 1
     ldi rArgByte1, 0x09
     rcall setLcdRowCol
-    ldi ZH, HIGH( sHexNbrStr )              ; Display the string with prefix
-    ldi ZL, LOW( sHexNbrStr )
+    ldiw Z, sHexNbrStr                      ; Display the string with prefix
     ldi rTmp1, kHexDigits
     mov rLoop1, rTmp1
 displayHexNbrLoop:
@@ -812,14 +818,13 @@ delayMilliSeconds:
         DWMS_Loop2:
 
             ; Initialze inner loop (uses a word counter and counts down)
-            ldi rDWMSInnerL, Low( kDWMSInnerCount )
-            ldi rDWMSInnerH, High( kDWMSInnerCount )
+            ldiw rDWMSInner, kDWMSInnerCount
 
             ; Top of inner loop
             DWMS_Loop3:
 
                 ; Decrement and test inner loop
-                sbiw rDWMSInnerL, 1
+                sbiw rDWMSInnerL:rDWMSInnerL, 1
                 brne DWMS_Loop3
                 ; Done with inner loop
 
@@ -868,13 +873,12 @@ delayTenthsOfSeconds:
         ; Top of outer loop
         DTS_Loop2:
             ; Initialze inner loop (uses a word counter and counts down)
-            ldi rDTSInnerL, Low( kDTSInnerCount )
-            ldi rDTSInnerH, High( kDTSInnerCount )
+            ldiw rDTSInner, kDTSInnerCount
 
             ; Top of inner loop
             DTS_Loop3:
                 ; Decrement and test inner loop
-                sbiw rDTSInnerL, 1
+                sbiw rDTSInnerH:rDTSInnerL, 1
                 brne DTS_Loop3
                 ; Done with inner loop
 
@@ -931,7 +935,7 @@ convertBinWordToAscStr3:
 	ld rTmp1, Z                        ; read next char
 	dec rScratch1                      ; more chars?
 	brne convertBinWordToAscStr3       ; yes, go on
-	sbiw ZL, 5                         ; Pointer to beginning of the BCD
+	sbiw ZH:ZL, 5                      ; Pointer to beginning of the BCD
 	ret
 
 
@@ -955,32 +959,32 @@ convertBinWordToBcdArray:
 	push rBinWordH                     ; Save number
 	push rBinWordL
 
-	ldi rTmp1, HIGH( 10000 )           ; Start with ten thousands
+	ldi rTmp1, High( 10000 )           ; Start with ten thousands
 	mov rScratch2, rTmp1
-	ldi rTmp1, LOW( 10000 )
+	ldi rTmp1, Low( 10000 )
 	mov rScratch1, rTmp1
 	rcall getOneBinWordDecDigit        ; Calculate digit
 
-	ldi rTmp1, HIGH( 1000 )            ; Next with thousands
+	ldi rTmp1, High( 1000 )            ; Next with thousands
 	mov rScratch2, rTmp1
-	ldi rTmp1, LOW( 1000 )
+	ldi rTmp1, Low( 1000 )
 	mov rScratch1, rTmp1
 	rcall getOneBinWordDecDigit        ; Calculate digit
 
-	ldi rTmp1, HIGH( 100 )             ; Next with hundreds
+	ldi rTmp1, High( 100 )             ; Next with hundreds
 	mov rScratch2, rTmp1
-	ldi rTmp1, LOW( 100 )
+	ldi rTmp1, Low( 100 )
 	mov rScratch1, rTmp1
 	rcall getOneBinWordDecDigit        ; Calculate digit
 
-	ldi rTmp1, HIGH( 10 )              ; Next with tens
+	ldi rTmp1, High( 10 )              ; Next with tens
 	mov rScratch2, rTmp1
-	ldi rTmp1, LOW( 10 )
+	ldi rTmp1, Low( 10 )
 	mov rScratch1, rTmp1
 	rcall getOneBinWordDecDigit        ; Calculate digit
 
 	st Z,rBinWordL                     ; Remainder are ones
-	sbiw ZL, 4                         ; Set pointer to first BCD
+	sbiw ZH:ZL, 4                      ; Set pointer to first BCD
 
 	pop rBinWordL                      ; Restore original binary
 	pop rBinWordH
@@ -1046,7 +1050,7 @@ convertBinWordToHexStr:
 	rcall Bin1ToHex2                               ; Convert byte
 	mov rTmp1, rBinWordL                           ; Repeat on LSB
 	rcall Bin1ToHex2
-	sbiw ZL, 4                                     ; Reset Z to start
+	sbiw ZH:ZL, 4                                  ; Reset Z to start
 
 	ret
 
