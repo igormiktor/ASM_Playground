@@ -419,7 +419,7 @@ main:
     clr rArgByte1
     call setLcdRowCol
     ldiw Z, sGreetingStr                        ; Read the greeting out of SRAM
-    ldi rTmp1, ( kdGreetingLen - 1 )
+    ldi rTmp1, kdGreetingLen
     mov rLoop1, rTmp1
 displayGreetingLoop:
         ld rArgByte0, Z+
