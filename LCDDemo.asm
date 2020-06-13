@@ -130,9 +130,12 @@
 ;  C O N S T A N T S
 ; **********************************
 
-; String-related constants
-.equ kDecimalDigits                 = 5
-.equ kHexDigits                     = 6         ; Includes '0x' prefix
+; Message and display related lengths
+.equ kDisplayMsgLen                 = 16
+.equ kDecimalDigitsLen              = 5
+.equ kHexPrefixLen                  = 2
+.equ kHexDigitsLen                  = 4
+
 
 ; LCD commands
 .equ kLcdClearDisplay               = 0x01
@@ -252,26 +255,34 @@
 ;  D A T A   S E G M E N T
 ;        ( S R A M )
 ; **********************************
-;
+
 .dseg
 .org SRAM_START
 
-sDecNbrStr:
-    .byte 5                                     ; Reserve for the output of convertBinWordToAscStr
-sDecNbrStrEnd:
-.equ ksDecNbrStrLen = sDecNbrStrEnd - sDecNbrStr
 
-sHexNbrStr:
-    .byte 2                                     ; Reserve for leading '0x'
+sStaticDataBegin:
+
+    sGreetingStr:
+        .byte kDisplayMsgLen                    ; Reserve for greeting to display at start up
+
+    sWashStartStr:
+        .byte kDisplayMsgLen                    ; Reserve for greeting to display at start up
+
+    sWashEndStr:
+        .byte kDisplayMsgLen                    ; Reserve for greeting to display at start up
+
+    sHexNbrStr:
+        .byte kHexPrefixLen                     ; Reserve for leading '0x'
+
+sStaticDataEnd:
+
+
 sHexOutputStr:
-    .byte 4                                     ; Reserve for outpout of convertBinWordToHexStr'
-sHexNbrStrEnd:
-.equ ksHexNbrStrEnd = sHexNbrStrEnd - sHexNbrStr
+    .byte kHexDigitsLen                         ; Reserve for outpout of convertBinWordToHexStr'
 
-sGreetingStr:
-    .byte 12                                    ; Reserve for greeting to display at start up
-sGreetingStrEnd:
-.equ ksGreetingStrEd = sGreetingStrEnd - sGreetingStr
+sDecNbrStr:
+    .byte kDecimalDigitsLen                     ; Reserve for the output of convertBinWordToAscStr
+
 
 
 ; **********************************
@@ -347,16 +358,29 @@ sGreetingStrEnd:
 ;  D A T A   I N   C O D E S E G
 ; ***************************************
 
-dGreeting:
-    .db 'H', 'e', 'l', 'l', 'o', ' '
-    .db 'W', 'o', 'r', 'l', 'd', '!'
-dGreetingEnd:
-.equ kdGreetingLen = 2 * ( dGreetingEnd - dGreeting )
+; Rem: data in codeseg stored and addressed by words (not bytes)
 
-d0xPrefix:
-    .db '0', 'x'
-d0xPrefixEnd:
-.equ kd0xPrefixLen = 2 * ( d0xPrefixEnd - d0xPrefix )
+dStaticDataBegin:
+
+    ; Greeting msg
+    .db 'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o'      ; 8 bytes
+    .db 'r', 'l', 'd', '!', ' ', ' ', ' ', ' '      ; 8 bytes
+
+    ; Wash hands msg
+    .db 'W', 'a', 's', 'h', ' ', 'y', 'o', 'u'      ; 8 bytes
+    .db 'r', ' ', 'h', 'a', 'n', 'd', 's', ' '      ; 8 bytes
+
+    ; Wash hands done msg
+    .db 'W', 'a', 's', 'h', 'i', 'n', 'g', ' '      ; 8 bytes
+    .db 'd', 'o', 'n', 'e', '!', ' ', ' ', ' '      ; 8 bytes
+
+    ; Prefix for hex numbers
+    .db '0', 'x'                                    ; 2 bytes
+
+dStaticDataEnd:
+
+.equ kdStaticDataLen = 2 * ( dStaticDataEnd - dStaticDataBegin )
+
 
 
 ; ***************************************
@@ -419,7 +443,7 @@ main:
     clr rArgByte1
     call setLcdRowCol
     ldiw Z, sGreetingStr                        ; Read the greeting out of SRAM
-    ldi rTmp1, kdGreetingLen
+    ldi rTmp1, kDisplayMsgLen
     mov rLoop1, rTmp1
 displayGreetingLoop:
         ld rArgByte0, Z+
@@ -497,25 +521,14 @@ initStaticData:
 
     ; Copy greeting string
     ; Set up pointers to read from PROGMEM to SRAM
-    ldi rTmp1, kdGreetingLen
-    ldiw Z, dGreeting << 1
-    ldiw X, sGreetingStr
-initStaticData_1:                               ; Actual transfer loop from PROGMEM to SRAM
+    ldi rTmp1, kdStaticDataLen
+    ldiw Z, dStaticDataBegin << 1
+    ldiw X, sStaticDataBegin
+initStaticData_Loop:                               ; Actual transfer loop from PROGMEM to SRAM
         lpm rScratch1, Z+
         st X+, rScratch1
         dec rTmp1
-        brne initStaticData_1
-
-    ; Copy hex prefix
-    ; Set up pointers to read from PROGMEM to SRAM
-    ldi rTmp1, kd0xPrefixLen
-    ldiw Z, d0xPrefix << 1
-    ldiw X, sHexNbrStr
-initStaticData_2:                               ; Actual transfer loop from PROGMEM to SRAM
-            lpm rScratch1, Z+
-            st X+, rScratch1
-            dec rTmp1
-            brne initStaticData_2
+        brne initStaticData_Loop
 
     ret
 
@@ -702,7 +715,7 @@ displayCountOnLcd:
     ldi rArgByte0, 1
     ldi rArgByte1, 1
     rcall setLcdRowCol
-    ldi rTmp1, kDecimalDigits
+    ldi rTmp1, kDecimalDigitsLen
     mov rLoop1, rTmp1
 displayDecNbrLoop:
         ld rArgByte0, Z+                    ; Read the value out of SRAM
@@ -717,7 +730,7 @@ displayDecNbrLoop:
     ldi rArgByte1, 0x09
     rcall setLcdRowCol
     ldiw Z, sHexNbrStr                      ; Display the string with prefix
-    ldi rTmp1, kHexDigits
+    ldi rTmp1, kHexDigitsLen
     mov rLoop1, rTmp1
 displayHexNbrLoop:
         ld rArgByte0, Z+                    ; Read the value out of SRAM
