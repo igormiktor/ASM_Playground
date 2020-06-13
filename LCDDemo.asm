@@ -135,6 +135,7 @@
 .equ kDecimalDigitsLen              = 5
 .equ kHexPrefixLen                  = 2
 .equ kHexDigitsLen                  = 4
+.equ kHexStrLen                     = kHexPrefixLen + kHexDigitsLen
 
 
 ; LCD commands
@@ -245,7 +246,7 @@
 .macro clearLcd
 
     ldi rArgByte0, kLcdClearDisplay
-    call sendCmdToLcd
+    rcall sendCmdToLcd
 
 .endm
 
@@ -411,7 +412,7 @@ main:
 
     initializeStack rTmp1                       ; Set up the stack
 
-    call initStaticData                         ; Move static data from PROGMEM to SRAM
+    rcall initStaticData                        ; Move static data from PROGMEM to SRAM
 
     clr rCounterMSB                             ; Clear rCounters
     clr rCounterLSB
@@ -750,29 +751,29 @@ displayCountOnLcd:
 
     ; Convert the value to an ASCII string and display
     ldiw Z, sDecNbrStr
-    call convertBinWordToAscStr             ; Dec ASCII version in SRAM
+    rcall convertBinWordToAscStr                ; Dec ASCII version in SRAM
     ldi rArgByte0, 1
     ldi rArgByte1, 1
     rcall setLcdRowCol
     ldi rTmp1, kDecimalDigitsLen
     mov rLoop1, rTmp1
 displayDecNbrLoop:
-        ld rArgByte0, Z+                    ; Read the value out of SRAM
+        ld rArgByte0, Z+                        ; Read the value out of SRAM
         rcall sendDataToLcd
         dec rLoop1
         brne displayDecNbrLoop
 
     ; Convert the value to a hex string and display
     ldiw Z, sHexOutputStr
-    call convertBinWordToHexStr             ; Hex ASCII version in SRAM
+    rcall convertBinWordToHexStr                ; Hex ASCII version in SRAM
     ldi rArgByte0, 1
     ldi rArgByte1, 0x09
     rcall setLcdRowCol
-    ldiw Z, sHexNbrStr                      ; Display the string with prefix
-    ldi rTmp1, kHexDigitsLen
+    ldiw Z, sHexNbrStr                          ; Display the string with prefix
+    ldi rTmp1, kHexStrLen
     mov rLoop1, rTmp1
 displayHexNbrLoop:
-        ld rArgByte0, Z+                    ; Read the value out of SRAM
+        ld rArgByte0, Z+                        ; Read the value out of SRAM
         rcall sendDataToLcd
         dec rLoop1
         brne displayHexNbrLoop
