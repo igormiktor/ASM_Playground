@@ -413,6 +413,9 @@ main:
 
     call initStaticData                         ; Move static data from PROGMEM to SRAM
 
+    clr rCounterMSB                             ; Clear rCounters
+    clr rCounterLSB
+
     sbi pGreenLedDirD, pGreenLedDirDBit         ; Set pin connected to Green LED to output mode
     sbi pRedLedDirD, pRedLedDirDBit             ; Set pin connected to Red LED to output mode
 
@@ -439,17 +442,8 @@ main:
     sbi pRedLedPort, pRedLedPortBit             ; Red LED on
 
     ; Display the greeting on the screen
-    clr rArgByte0
-    clr rArgByte1
-    call setLcdRowCol
-    ldiw Z, sGreetingStr                        ; Read the greeting out of SRAM
-    ldi rTmp1, kDisplayMsgLen
-    mov rLoop1, rTmp1
-displayGreetingLoop:
-        ld rArgByte0, Z+
-        rcall sendDataToLcd
-        dec rLoop1
-        brne displayGreetingLoop
+    ldiw Z, sGreetingStr                        ; Display greeting string
+    rcall displayMsgOnLcd
 
     ; Pause (see both LEDs working)
     ldi rArgByte0, kPauseTime
@@ -461,9 +455,11 @@ displayGreetingLoop:
     ldi rArgByte0, kPauseTime
     rcall delayTenthsOfSeconds                  ; Pause before we start blinking them
 
+    sbi pRedLedPort, pRedLedPortBit             ; Red (PB0) LED on
+    ldiw Z, sWashStartStr                       ; Display wash hands string
+    rcall displayMsgOnLcd
     clr rBinWordH
     clr rBinWordL
-    sbi pRedLedPort, pRedLedPortBit             ; Red (PB0) LED on
     rcall displayCountOnLcd                     ; Zero counter display on LCD
 
     ; Load the CompA/CompB "top" counter values, 16-bit value must be loaded high-byte first
@@ -501,6 +497,17 @@ displayGreetingLoop:
         sei                                     ; Restore interrupts
 
         rcall displayCountOnLcd                 ; Update counter display on LCD
+
+        clr rTmp1                               ; If counter == 20, change the message
+        cp rBinWordH, rTmp1
+        breq mainLoop
+
+        ldi rTmp1, 20
+        cp rBinWordL, rTmp1
+        brne mainLoop
+
+        ldiw Z, sWashEndStr
+        rcall displayMsgOnLcd
 
         rjmp mainLoop                           ; Go back to top of main loop
 
@@ -690,6 +697,38 @@ NoOffsetRequired:
     ori rArgByte1, kLcdSetDdramAddr             ; Incorporate the command itself
     mov rArgByte0, rArgByte1                    ; Move the cmd to rArgByte0
     rcall sendCmdToLcd
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+displayMsgOnLcd:
+
+    ; Z passed as parameter (pointer to message, modified)
+
+    ; Z             = pointer to SRAM to 16 character (byte) message to display
+    ; rTmp1         = temporary
+    ; rLoop1        = loop counter
+    ; rArgByte0     = Used
+    ; rArgByte1     = Used
+
+    ; Position display
+    clr rArgByte0
+    clr rArgByte1
+    rcall setLcdRowCol
+
+    ; Set up loop and display
+    ldi rTmp1, kDisplayMsgLen
+    mov rLoop1, rTmp1
+displayMsgLoop:
+        ld rArgByte0, Z+
+        rcall sendDataToLcd
+        dec rLoop1
+        brne displayMsgLoop
 
     ret
 
