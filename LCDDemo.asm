@@ -499,9 +499,8 @@ main:
 
         rcall displayCountOnLcd                 ; Update counter display on LCD
 
-        clr rTmp1                               ; If counter == 20, change the message
-        cp rBinWordH, rTmp1
-        breq mainLoop
+        tst rBinWordH                           ; If counter == 20, change the message
+        brne mainLoop
 
         ldi rTmp1, 20
         cp rBinWordL, rTmp1
