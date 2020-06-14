@@ -53,3 +53,4 @@ A more complicated program that runs a plain vanilla 16x2 LCD.  This code:
 of the bottom row.
 *  Displays the number of elapsed seconds in hexadecimal form (with leading
 '0x') on the right side of the bottom row.
+* As it counts, it posts messages to serve as a 20 second hand-washing timer
