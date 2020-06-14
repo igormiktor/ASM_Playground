@@ -1,12 +1,70 @@
-;***** Register used by all programs
-;******Global variable used by all routines
-.def temp =r16 ;general scratch space
+; ***********************************************************************************
+;
+;    Operate an 4x4 KeyPad
+;    Detect key hit and flash LEDs accordingly.
+;
+;    The MIT License (MIT)
+;
+;    Copyright (c) 2020 Igor Mikolic-Torreira
+;
+;    Permission is hereby granted, free of charge, to any person obtaining a copy
+;    of this software and associated documentation files (the "Software"), to deal
+;    in the Software without restriction, including without limitation the rights
+;    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+;    copies of the Software, and to permit persons to whom the Software is
+;    furnished to do so, subject to the following conditions:
+;
+;    The above copyright notice and this permission notice shall be included in all
+;    copies or substantial portions of the Software.
+;
+;    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+;    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+;    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+;    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+;    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+;    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+;    SOFTWARE.
+;
+; ***********************************************************************************
 
-;Port B pins
+
+
+.device "ATmega328p"
+
+
+
+; **********************************
+;  P O R T S   A N D   P I N S
+; **********************************
+
+; Green LED pin
+.equ pGreenLedDirD                  = DDRB
+.equ pGreenLedDirDBit               = DDB1
+.equ pGreenLedPort                  = PORTB
+.equ pGreenLedPortBit               = PORTB1
+.equ pGreenLedPin                   = PINB
+.equ pGreenLedPinBit                = PINB1
+
+; Red LED pin
+.equ pRedLedDirD                    = DDRB
+.equ pRedLedDirDBit                 = DDB0
+.equ pRedLedPort                    = PORTB
+.equ pRedLedPortBit                 = PORTB0
+.equ pRedLedPin                     = PINB
+.equ pRedLedPinBit                  = PINB0
+
+
+
+; **********************************
+;  C O N S T A N T S
+; **********************************
+
+Port B pins
 .equ ROW1 =3 ;keypad input rows
 .equ ROW2 =2
 .equ ROW3 =1
 .equ ROW4 =0
+
 .equ COL1 =7 ;keypad output columns
 .equ COL2 =6
 .equ COL3 =5
@@ -20,31 +78,138 @@
 .equ GREEN=0 ;green LED
 .equ RED =1 ;red LED
 .equ INTR =2 ;interrupt input
-.include "1200def.inc"
+
+
+
+; ***************************************
+;  R E G I S T E R  P O L I C Y
+; ***************************************
+
+.def rScratch1      = r2                        ; Scratch (low) register
+.def rScratch2      = r3                        ; Scratch (low) register
+
+.def rBinWordL      = r4                        ; Argument for ASCII conversion
+.def rBinWordH      = r5                        ; Argument for ASCII conversion
+
+.def rLoop1         = r14                       ; Loop counter
+
+.def rSREG          = r15                       ; Save/Restore status port
+
+.def rTmp1          = r16                       ; Multipurpose registera
+.def rTmp2          = r17
+
+.def rArgByte0      = r24                       ; For now using C register conventions for function calls
+.def rArgByte1      = r25                       ; Second byte arg, or high byte of word arg
+
+.def rCounterLSB    = r26                       ; LSB of word (16-bit) counter (XL)
+.def rCounterMSB    = r27                       ; MSB of word (16-bit) counter (XH)
+
+;***** Register used by all programs
+;******Global variable used by all routines
+.def temp =r16 ;general scratch space
+
 
 
 ;***** Registers used by interrupt service routine
 .def key =r17 ;key pointer for EEPROM
 .def status =r21 ;preserve sreg here
-;***** Registers used by delay subroutine
-;***** as local variables
-.def fine =r18 ;loop delay counters
-.def medium =r19
-.def coarse =r20
 
 
-;*****Look up table for key conversion*****************************
-.eseg ;EEPROM segment
+
+; ************************************
+;  E E P R O M   S E G M E N T
+; ************************************
+
+.eseg
 .org 0
-.db 1,2,3,15,4,5,6,14,7,8,9,13,10,0,11,12
 
-;****Source code***************************************************
-.cseg ;CODE segment
+; Look up table for key conversion
+.db 1, 2, 3, 15, 4, 5, 6, 14, 7, 8, 9, 13, 10, 0, 11, 12
+
+
+
+
+; **********************************
+;  C O D E  S E G M E N T
+; **********************************
+
+.cseg
 .org 0
-rjmp reset ;Reset handler
-rjmp scan ;interrupt service routine
-reti ;unused timer interrupt
-reti ;unused analogue interrupt
+
+
+
+
+; ************************************
+;  I N T E R R U P T  V E C T O R S
+; ************************************
+
+.org 0x00
+	rjmp reset                 ; Reset vector
+.org 0x02
+	rjmp scanKeyPad            ; INT0
+.org 0x04
+	reti                       ; INT1
+.org 0x06
+	reti                       ; PCI0
+.org 0x08
+	reti                       ; PCI1
+.org 0x0A
+	reti                       ; PCI2
+.org 0x0C
+	reti                       ; WDT
+.org 0x0E
+	reti                       ; OC2A
+.org 0x10
+	reti                       ; OC2B
+.org 0x12
+	reti                       ; OVF2
+.org 0x14
+	reti                       ; ICP1
+.org 0x16
+	reti                       ; OC1A
+.org 0x18
+	reti                       ; OC1B
+.org 0x1A
+	reti                       ; OVF1
+.org 0x1C
+	reti                       ; OC0A
+.org 0x1E
+	reti                       ; OC0B
+.org 0x20
+	reti                       ; OVF0
+.org 0x22
+	reti                       ; SPI
+.org 0x24
+	reti                       ; URXC
+.org 0x26
+	reti                       ; UDRE
+.org 0x28
+	reti                       ; UTXC
+.org 0x2A
+	reti                       ; ADCC
+.org 0x2C
+	reti                       ; ERDY
+.org 0x2E
+	reti                       ; ACI
+.org 0x30
+	reti                       ; TWI
+.org 0x32
+	reti                       ; SPMR
+.org 0x34
+
+
+
+; ***************************************
+;  I N T E R R U P T  H A N D L E R S
+; ***************************************
+
+
+
+
+
+
+
+
 
 ;*** Reset handler *************************************************
 reset:
