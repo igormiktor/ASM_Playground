@@ -38,46 +38,54 @@
 ; **********************************
 
 ; Green LED pin
-.equ pGreenLedDirD                  = DDRB
-.equ pGreenLedDirDBit               = DDB1
-.equ pGreenLedPort                  = PORTB
-.equ pGreenLedPortBit               = PORTB1
-.equ pGreenLedPin                   = PINB
-.equ pGreenLedPinBit                = PINB1
+.equ pGreenLedDirD                  = DDRC
+.equ pGreenLedDirDBit               = DDC3
+.equ pGreenLedPort                  = PORTC
+.equ pGreenLedPortBit               = PORTC3
+.equ pGreenLedPin                   = PINC
+.equ pGreenLedPinBit                = PINC3
 
 ; Red LED pin
-.equ pRedLedDirD                    = DDRB
-.equ pRedLedDirDBit                 = DDB0
-.equ pRedLedPort                    = PORTB
-.equ pRedLedPortBit                 = PORTB0
-.equ pRedLedPin                     = PINB
-.equ pRedLedPinBit                  = PINB0
+.equ pRedLedDirD                    = DDRC
+.equ pRedLedDirDBit                 = DDC2
+.equ pRedLedPort                    = PORTC
+.equ pRedLedPortBit                 = PORTC2
+.equ pRedLedPin                     = PINC
+.equ pRedLedPinBit                  = PINC2
 
+; Interrupt pin
+.equ pInt0DirD                    = DDRD
+.equ pInt0DirDBit                 = DDD2
+.equ pInt0Port                    = PORTD
+.equ pInt0PortBit                 = PORTD2
+.equ pInt0Pin                     = PIND
+.equ pInt0PinBit                  = PIND2
+
+; Going for D4-D7 (columns) and B0-3 (rows) an D2 for INT0
 
 
 ; **********************************
 ;  C O N S T A N T S
 ; **********************************
 
-Port B pins
-.equ ROW1 =3 ;keypad input rows
-.equ ROW2 =2
-.equ ROW3 =1
-.equ ROW4 =0
-
-.equ COL1 =7 ;keypad output columns
-.equ COL2 =6
-.equ COL3 =5
-.equ COL4 =4
-.equ ROW1 =3 ;keypad input rows
-.equ ROW2 =2
-.equ ROW3 =1
-.equ ROW4 =0
+;Port B pins
+.equ ROW1   = 3 ;keypad input rows
+.equ ROW2   = 2
+.equ ROW3   = 1
+.equ ROW4   = 0
 
 ;Port D pins
-.equ GREEN=0 ;green LED
-.equ RED =1 ;red LED
-.equ INTR =2 ;interrupt input
+.equ COL1   = 7 ;keypad output columns
+.equ COL2   = 6
+.equ COL3   = 5
+.equ COL4   = 4
+
+;Port C pins
+.equ GREEN  = 3 ;green LED
+.equ RED    = 2 ;red LED
+
+;Port D pins
+.equ INTR   = 2 ;interrupt input
 
 
 
@@ -203,42 +211,7 @@ Port B pins
 ;  I N T E R R U P T  H A N D L E R S
 ; ***************************************
 
-
-
-
-
-
-
-
-
-;*** Reset handler *************************************************
-reset:
-    ldi temp,0xFB ;initialise port D as O/I
-    out DDRD,temp ;all OUT except PD2 ext.int.
-    ldi temp,0x30 ;turn on sleep mode and power
-    out MCUCR,temp ;down plus interrupt on low level.
-    ldi temp,0x40 ;enable external interrupts
-    out GIMSK,temp
-    sbi ACSR,ACD ;shut down comparator to save power
-
-main:
-    cli ;disable global interrupts
-    ldi temp,0xF0 ;initialise port B as I/O
-    out DDRB,temp ; 4 OUT 4 IN
-    ldi temp,0x0F ;key columns all low and
-    out PORTB,temp ;active pull ups on rows enabled
-    ldi temp,0x07 ;enable pull up on PD2 and
-    out PORTD,temp ;turn off LEDs
-    sei ;enable global interrupts ready
-    sleep ;fall asleep
-    rcall flash ;flash LEDs for example usage
-    ldi temp,0x40
-    out GIMSK,temp ;enable external interrupt
-    rjmp main ;go back to sleep after keyscan
-
-;
-;****Interrupt service routine***************************************
-scan:
+scanKeyPad:
     in status,SREG ;preserve status register
     sbis PINB,ROW1 ;find row of keypress
     ldi key,0 ;and set ROW pointer
@@ -270,6 +243,63 @@ scan:
     ldi temp,0x00
     out GIMSK,temp  ; disable external interrupt have to do this, because we're using a level-triggered interrupt
     reti ;go back to main for example program
+
+
+
+
+
+
+
+
+;*** Reset handler *************************************************
+reset:
+    ldi temp, 0xFB          ; Initialize port D as O/I
+    out DDRD, temp          ; All OUT except PD2 ext.int.
+;    ldi temp, 0x30         ; Turn on sleep mode and power
+;    out MCUCR, temp        ; Down plus interrupt on low level.
+    ldi temp, 0x40          ; Enable external interrupts
+    out GIMSK, temp
+;    sbi ACSR,ACD ;shut down comparator to save power
+
+main:
+    cli                     ; Disable global interrupts
+
+    ldi temp, 0xF0          ; Initialise PD4-PD7, columns, as output (others input)
+    out DDRD, temp
+    ldi temp, 0             ; Initialize PD-PD7 as low
+    out PORTD, 0
+
+    in temp, DDRB
+    andi temp, 0xF0         ; Initialize PB0-PB3 as input
+    out DDRB, temp
+    in temp, PORTB          ; Enable pull ups on PB0-PB3
+    ori temp, 0x0F
+    out PORTB, temp
+
+    ; LEDs
+    sbi pGreenLedDirD, pGreenLedDirDBit
+    cbi pGreenLedPort, pGreenLedPortBit
+    sbi pRedLedDirD, pGreenLedDirDBit
+    cbi pRedLedLedPort, pRedLedPortBit
+
+    ; INT0/PD2
+    cbi pInt0DirD, pInt0DirDBit
+    sbi pInt0Port, pInt0PortBit
+
+    out DDRB,temp ; 4 OUT 4 IN
+    ldi temp,0x0F ;key columns all low and
+    out PORTB,temp ;active pull ups on rows enabled
+    ldi temp,0x07 ;enable pull up on PD2 and
+    out PORTD,temp ;turn off LEDs
+    sei ;enable global interrupts ready
+    sleep ;fall asleep
+    rcall flash ;flash LEDs for example usage
+    ldi temp,0x40
+    out GIMSK,temp ;enable external interrupt
+    rjmp main ;go back to sleep after keyscan
+
+;
+;****Interrupt service routine***************************************
 
 
 ;***Example test program to flash LEDs using key press data***********
