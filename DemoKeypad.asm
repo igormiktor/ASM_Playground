@@ -54,12 +54,12 @@
 .equ pRedLedPinBit                  = PINC2
 
 ; Interrupt pin
-.equ pInt0DirD                    = DDRD
-.equ pInt0DirDBit                 = DDD2
-.equ pInt0Port                    = PORTD
-.equ pInt0PortBit                 = PORTD2
-.equ pInt0Pin                     = PIND
-.equ pInt0PinBit                  = PIND2
+.equ pInt0DirD                      = DDRD
+.equ pInt0DirDBit                   = DDD2
+.equ pInt0Port                      = PORTD
+.equ pInt0PortBit                   = PORTD2
+.equ pInt0Pin                       = PIND
+.equ pInt0PinBit                    = PIND2
 
 ; Going for D4-D7 (columns) and B0-3 (rows) an D2 for INT0
 
@@ -69,12 +69,14 @@
 ; **********************************
 
 ;Port B pins
+.equ pRowDirD                       = DDRB
 .equ ROW1   = 3 ;keypad input rows
 .equ ROW2   = 2
 .equ ROW3   = 1
 .equ ROW4   = 0
 
 ;Port D pins
+.equ pRowDirD                       = DDRD
 .equ COL1   = 7 ;keypad output columns
 .equ COL2   = 6
 .equ COL3   = 5
@@ -253,53 +255,61 @@ scanKeyPad:
 
 ;*** Reset handler *************************************************
 reset:
-    ldi temp, 0xFB          ; Initialize port D as O/I
-    out DDRD, temp          ; All OUT except PD2 ext.int.
+;    ldi temp, 0xFB          ; Initialize port D as O/I
+;    out DDRD, temp          ; All OUT except PD2 ext.int.
 ;    ldi temp, 0x30         ; Turn on sleep mode and power
 ;    out MCUCR, temp        ; Down plus interrupt on low level.
-    ldi temp, 0x40          ; Enable external interrupts
-    out GIMSK, temp
-;    sbi ACSR,ACD ;shut down comparator to save power
 
-main:
-    cli                     ; Disable global interrupts
-
-    ldi temp, 0xF0          ; Initialise PD4-PD7, columns, as output (others input)
-    out DDRD, temp
-    ldi temp, 0             ; Initialize PD-PD7 as low
-    out PORTD, 0
-
-    in temp, DDRB
-    andi temp, 0xF0         ; Initialize PB0-PB3 as input
-    out DDRB, temp
-    in temp, PORTB          ; Enable pull ups on PB0-PB3
-    ori temp, 0x0F
-    out PORTB, temp
-
-    ; LEDs
+    ; Initialize LEDs
     sbi pGreenLedDirD, pGreenLedDirDBit
     cbi pGreenLedPort, pGreenLedPortBit
     sbi pRedLedDirD, pGreenLedDirDBit
     cbi pRedLedLedPort, pRedLedPortBit
 
-    ; INT0/PD2
-    cbi pInt0DirD, pInt0DirDBit
-    sbi pInt0Port, pInt0PortBit
+    ; INT0/PD2, external interrupt 0
+    cbi pInt0DirD, pInt0DirDBit     ; Set as input
+    sbi pInt0Port, pInt0PortBit     ; Enable pullup
 
-    out DDRB,temp ; 4 OUT 4 IN
-    ldi temp,0x0F ;key columns all low and
-    out PORTB,temp ;active pull ups on rows enabled
-    ldi temp,0x07 ;enable pull up on PD2 and
-    out PORTD,temp ;turn off LEDs
-    sei ;enable global interrupts ready
-    sleep ;fall asleep
-    rcall flash ;flash LEDs for example usage
-    ldi temp,0x40
-    out GIMSK,temp ;enable external interrupt
-    rjmp main ;go back to sleep after keyscan
+    ldi temp, 0x40          ; Enable external interrupts
+    out GIMSK, temp
+;    sbi ACSR,ACD ;shut down comparator to save power
 
-;
-;****Interrupt service routine***************************************
+main:
+    cli                     ; Disable interrupts
+
+    ; Columns
+    in temp, DDRB           ; Set PD4-PD7, columns, as output (others unchanged)
+    ori temp, 0xF0
+    out DDRD, temp
+    in temp, PORTD          ; Set PD4-PD7 as low
+    andi temp, 0x0F
+    out PORTD, temp
+
+    ; Rows
+    in temp, pRowDirD       ; Set PB0-PB3, rows, as input
+    andi temp, 0xF0
+    out pRowDirD, temp
+    in temp, pRowDirD       ; Enable pull ups on PB0-PB3
+    ori temp, 0x0F
+    out pRowDirD, temp
+
+    ; LEDs off
+    sbi pGreenLedDirD, pGreenLedDirDBit
+    cbi pGreenLedPort, pGreenLedPortBit
+    sbi pRedLedDirD, pGreenLedDirDBit
+    cbi pRedLedLedPort, pRedLedPortBit
+
+    sei                     ; Enable interrupts
+
+    sleep
+
+    rcall flash             ; Flash LEDs
+
+    ldi temp,0x40           ; Enable external interrupt
+    out GIMSK,temp
+    rjmp main               ; Loop
+
+
 
 
 ;***Example test program to flash LEDs using key press data***********
