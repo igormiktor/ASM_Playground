@@ -76,7 +76,7 @@
 .equ ROW4   = 0
 
 ;Port D pins
-.equ pRowDirD                       = DDRD
+.equ pColDirD                       = DDRD
 .equ COL1   = 7 ;keypad output columns
 .equ COL2   = 6
 .equ COL3   = 5
@@ -214,37 +214,37 @@
 ; ***************************************
 
 scanKeyPad:
-    in status,SREG ;preserve status register
-    sbis PINB,ROW1 ;find row of keypress
-    ldi key,0 ;and set ROW pointer
-    sbis PINB,ROW2
-    ldi key,4
-    sbis PINB,ROW3
-    ldi key,8
-    sbis PINB,ROW4
-    ldi key,12
-    ldi temp,0x0F ;change port B I/O to
-    out DDRB,temp ;find column press
-    ldi temp,0xF0 ;enable pull ups and
-    out PORTB,temp ;write 0s to rows
-    rcall settle ;allow time for port to settle
-    sbis PINB,COL1 ;find column of keypress
-    ldi temp,0 ;and set COL pointer
-    sbis PINB,COL2
-    ldi temp,1
-    sbis PINB,COL3
-    ldi temp,2
-    sbis PINB,COL4
-    ldi temp,3
-    add key,temp ;merge ROW and COL for pointer
-    ldi temp,0xF0 ;reinitialise port B as I/O
-    out DDRB,temp ; 4 OUT 4 IN
-    ldi temp,0x0F ;key columns all low and
-    out PORTB,temp ;active pull ups on rows enabled
-    out SREG,status ;restore status register
-    ldi temp,0x00
-    out GIMSK,temp  ; disable external interrupt have to do this, because we're using a level-triggered interrupt
-    reti ;go back to main for example program
+    in status, SREG                 ; Preserve status register
+    sbis PINB, ROW1                 ; Find row of keypress
+    ldi key, 0                      ; Set ROW pointer
+    sbis PINB, ROW2
+    ldi key, 4
+    sbis PINB, ROW3
+    ldi key, 8
+    sbis PINB, ROW4
+    ldi key, 12
+    ldi temp, 0x0F                  ; Change port B I/O to
+    out DDRB, temp                  ; find column press
+    ldi temp, 0xF0                  ; Enable pull ups and
+    out PORTB, temp                 ; Write 0s to rows
+    rcall settle                    ; Allow time for port to settle
+    sbis PINB, COL1                 ; Find column of keypress
+    ldi temp, 0                     ; And set COL pointer
+    sbis PINB, COL2
+    ldi temp, 1
+    sbis PINB, COL3
+    ldi temp, 2
+    sbis PINB, COL4
+    ldi temp, 3
+    add key, temp                   ;merge ROW and COL for pointer
+    ldi temp, 0xF0                  ;reinitialise port B as I/O
+    out DDRB, temp                  ; 4 OUT 4 IN
+    ldi temp, 0x0F                  ;key columns all low and
+    out PORTB, temp                 ;active pull ups on rows enabled
+    out SREG, status                ;restore status register
+    ldi temp, 0x00
+    out GIMSK, temp                 ; Disable external interrupt have to do this, because we're using a level-triggered interrupt
+    reti
 
 
 
@@ -275,21 +275,21 @@ reset:
 ;    sbi ACSR,ACD ;shut down comparator to save power
 
 main:
-    cli                     ; Disable interrupts
+    cli                             ; Disable interrupts
 
     ; Columns
-    in temp, DDRB           ; Set PD4-PD7, columns, as output (others unchanged)
+    in temp, pColDirD               ; Set PD4-PD7, columns, as output (others unchanged)
     ori temp, 0xF0
-    out DDRD, temp
-    in temp, PORTD          ; Set PD4-PD7 as low
+    out pColDirD, temp
+    in temp, pColDirD               ; Set PD4-PD7 as low
     andi temp, 0x0F
-    out PORTD, temp
+    out pColDirD, temp
 
     ; Rows
-    in temp, pRowDirD       ; Set PB0-PB3, rows, as input
+    in temp, pRowDirD               ; Set PB0-PB3, rows, as input
     andi temp, 0xF0
     out pRowDirD, temp
-    in temp, pRowDirD       ; Enable pull ups on PB0-PB3
+    in temp, pRowDirD               ; Enable pull ups on PB0-PB3
     ori temp, 0x0F
     out pRowDirD, temp
 
@@ -299,31 +299,32 @@ main:
     sbi pRedLedDirD, pGreenLedDirDBit
     cbi pRedLedLedPort, pRedLedPortBit
 
-    sei                     ; Enable interrupts
+    sei                             ; Enable interrupts
 
     sleep
 
-    rcall flash             ; Flash LEDs
+    rcall flash                     ; Flash LEDs
 
-    ldi temp,0x40           ; Enable external interrupt
+    ldi temp,0x40                   ; Enable external interrupt
     out GIMSK,temp
-    rjmp main               ; Loop
+    rjmp main                       ; Loop
 
 
 
 
 ;***Example test program to flash LEDs using key press data***********
+
 flash:
-    out EEAR,key ;address EEPROM
-    sbi EECR,EERE ;strobe EEPROM
-    in temp,EEDR ;set number of flashes
-    tst temp ;is it zero?
-    breq zero ;do RED LED
+    out EEAR, key                   ; Address EEPROM
+    sbi EECR, EERE                  ; Strobe EEPROM
+    in temp, EEDR                   ; Set number of flashes
+    tst temp                        ; Is it zero?
+    breq zero                       ; Do RED LED
 
 green_flash:
-    cbi PORTD,GREEN;flash green LED 'temp' times
+    cbi PORTD, GREEN                ; Flash green LED 'temp' times
     rcall delay
-    sbi PORTD,GREEN
+    sbi PORTD, GREEN
     rcall delay
     dec temp
     brne green_flash
@@ -335,9 +336,9 @@ zero:
     ldi temp,10
 
 flash_again:
-    cbi PORTD,RED ;flash red LED ten times
+    cbi PORTD, RED                  ; Flash red LED ten times
     rcall delay
-    sbi PORTD,RED
+    sbi PORTD,  RED
     rcall delay
     dec temp
     brne flash_again
