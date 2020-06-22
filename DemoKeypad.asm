@@ -108,21 +108,52 @@
 .def rTmp1          = r16                       ; Multipurpose registera
 .def rTmp2          = r17
 
+.def rKey           = r18                       ; Index of key hit, used to look value in Key Table
+
 .def rArgByte0      = r24                       ; For now using C register conventions for function calls
 .def rArgByte1      = r25                       ; Second byte arg, or high byte of word arg
 
 .def rCounterLSB    = r26                       ; LSB of word (16-bit) counter (XL)
 .def rCounterMSB    = r27                       ; MSB of word (16-bit) counter (XH)
 
-;***** Register used by all programs
-;******Global variable used by all routines
-.def temp =r16 ;general scratch space
-
+;
 
 
 ;***** Registers used by interrupt service routine
 .def key =r17 ;key pointer for EEPROM
-.def status =r21 ;preserve sreg here
+
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = tmp reg to use (upper half)
+.macro initializeStack
+
+    .ifdef SPH
+        ldi @0, High( RAMEND )
+        out SPH, @0                             ; Upper byte of stack pointer (always load high-byte first)
+    .endif
+    ldi @0, Low( RAMEND )
+    out SPL, @0                                 ; Lower byte of stack pointer
+
+.endm
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = register base name, @1 = 16-bit constant
+.macro ldiw
+
+   ldi @0H, High( @1 )
+   ldi @0L, Low( @1 )
+
+.endm
 
 
 
@@ -130,11 +161,29 @@
 ;  E E P R O M   S E G M E N T
 ; ************************************
 
-.eseg
-.org 0
+;.eseg
+;.org 0
 
 ; Look up table for key conversion
-.db 1, 2, 3, 15, 4, 5, 6, 14, 7, 8, 9, 13, 10, 0, 11, 12
+;.db 1, 2, 3, 15, 4, 5, 6, 14, 7, 8, 9, 13, 10, 0, 11, 12
+
+
+
+; **********************************
+;  D A T A   S E G M E N T
+;        ( S R A M )
+; **********************************
+
+.dseg
+.org SRAM_START
+
+
+sStaticDataBegin:
+
+    sKeyPadTable:
+        .byte 16
+
+sStaticDataEnd:
 
 
 
@@ -209,41 +258,59 @@
 
 
 
+
+; ***************************************
+;  D A T A   I N   C O D E S E G
+; ***************************************
+
+; Rem: data in codeseg stored and addressed by words (not bytes)
+
+dStaticDataBegin:
+
+; Look up table for key conversion
+.db 1, 2, 3, 15, 4, 5, 6, 14, 7, 8, 9, 13, 10, 0, 11, 12
+
+dStaticDataEnd:
+
+.equ kdStaticDataLen = 2 * ( dStaticDataEnd - dStaticDataBegin )
+
+
+
 ; ***************************************
 ;  I N T E R R U P T  H A N D L E R S
 ; ***************************************
 
 scanKeyPad:
-    in status, SREG                 ; Preserve status register
+    in rSREG, SREG                 ; Preserve status register
     sbis PINB, ROW1                 ; Find row of keypress
-    ldi key, 0                      ; Set ROW pointer
+    ldi rKey, 0                      ; Set ROW pointer
     sbis PINB, ROW2
-    ldi key, 4
+    ldi rKey, 4
     sbis PINB, ROW3
-    ldi key, 8
+    ldi rKey, 8
     sbis PINB, ROW4
-    ldi key, 12
-    ldi temp, 0x0F                  ; Change port B I/O to
-    out DDRB, temp                  ; find column press
-    ldi temp, 0xF0                  ; Enable pull ups and
-    out PORTB, temp                 ; Write 0s to rows
+    ldi rKey, 12
+    ldi rTmp1, 0x0F                  ; Change port B I/O to
+    out DDRB, rTmp1                  ; find column press
+    ldi rTmp1, 0xF0                  ; Enable pull ups and
+    out PORTB, rTmp1                 ; Write 0s to rows
     rcall settle                    ; Allow time for port to settle
     sbis PINB, COL1                 ; Find column of keypress
-    ldi temp, 0                     ; And set COL pointer
+    ldi rTmp1, 0                     ; And set COL pointer
     sbis PINB, COL2
-    ldi temp, 1
+    ldi rTmp1, 1
     sbis PINB, COL3
-    ldi temp, 2
+    ldi rTmp1, 2
     sbis PINB, COL4
-    ldi temp, 3
-    add key, temp                   ;merge ROW and COL for pointer
-    ldi temp, 0xF0                  ;reinitialise port B as I/O
-    out DDRB, temp                  ; 4 OUT 4 IN
-    ldi temp, 0x0F                  ;key columns all low and
-    out PORTB, temp                 ;active pull ups on rows enabled
+    ldi rTmp1, 3
+    add rKey, rTmp1                   ;merge ROW and COL for pointer
+    ldi rTmp1, 0xF0                  ;reinitialise port B as I/O
+    out DDRB, rTmp1                  ; 4 OUT 4 IN
+    ldi rTmp1, 0x0F                  ;rKey columns all low and
+    out PORTB, rTmp1                 ;active pull ups on rows enabled
     out SREG, status                ;restore status register
-    ldi temp, 0x00
-    out GIMSK, temp                 ; Disable external interrupt have to do this, because we're using a level-triggered interrupt
+    ldi rTmp1, 0x00
+    out GIMSK, rTmp1                 ; Disable external interrupt have to do this, because we're using a level-triggered interrupt
     reti
 
 
@@ -255,10 +322,16 @@ scanKeyPad:
 
 ;*** Reset handler *************************************************
 reset:
-;    ldi temp, 0xFB          ; Initialize port D as O/I
-;    out DDRD, temp          ; All OUT except PD2 ext.int.
-;    ldi temp, 0x30         ; Turn on sleep mode and power
-;    out MCUCR, temp        ; Down plus interrupt on low level.
+;    ldi rTmp1, 0xFB          ; Initialize port D as O/I
+;    out DDRD, rTmp1          ; All OUT except PD2 ext.int.
+;    ldi rTmp1, 0x30         ; Turn on sleep mode and power
+;    out MCUCR, rTmp1        ; Down plus interrupt on low level.
+
+
+    initializeStack rTmp1
+
+    rcall initStaticData                        ; Move static data from PROGMEM to SRAM
+
 
     ; Initialize LEDs
     sbi pGreenLedDirD, pGreenLedDirDBit
@@ -270,28 +343,28 @@ reset:
     cbi pInt0DirD, pInt0DirDBit     ; Set as input
     sbi pInt0Port, pInt0PortBit     ; Enable pullup
 
-    ldi temp, 0x40          ; Enable external interrupts
-    out GIMSK, temp
+    ldi rTmp1, 0x40          ; Enable external interrupts
+    out GIMSK, rTmp1
 ;    sbi ACSR,ACD ;shut down comparator to save power
 
 main:
     cli                             ; Disable interrupts
 
     ; Columns
-    in temp, pColDirD               ; Set PD4-PD7, columns, as output (others unchanged)
-    ori temp, 0xF0
-    out pColDirD, temp
-    in temp, pColDirD               ; Set PD4-PD7 as low
-    andi temp, 0x0F
-    out pColDirD, temp
+    in rTmp1, pColDirD               ; Set PD4-PD7, columns, as output (others unchanged)
+    ori rTmp1, 0xF0
+    out pColDirD, rTmp1
+    in rTmp1, pColDirD               ; Set PD4-PD7 as low
+    andi rTmp1, 0x0F
+    out pColDirD, rTmp1
 
     ; Rows
-    in temp, pRowDirD               ; Set PB0-PB3, rows, as input
-    andi temp, 0xF0
-    out pRowDirD, temp
-    in temp, pRowDirD               ; Enable pull ups on PB0-PB3
-    ori temp, 0x0F
-    out pRowDirD, temp
+    in rTmp1, pRowDirD               ; Set PB0-PB3, rows, as input
+    andi rTmp1, 0xF0
+    out pRowDirD, rTmp1
+    in rTmp1, pRowDirD               ; Enable pull ups on PB0-PB3
+    ori rTmp1, 0x0F
+    out pRowDirD, rTmp1
 
     ; LEDs off
     sbi pGreenLedDirD, pGreenLedDirDBit
@@ -305,8 +378,8 @@ main:
 
     rcall flash                     ; Flash LEDs
 
-    ldi temp,0x40                   ; Enable external interrupt
-    out GIMSK,temp
+    ldi rTmp1,0x40                   ; Enable external interrupt
+    out GIMSK,rTmp1
     rjmp main                       ; Loop
 
 
@@ -315,32 +388,32 @@ main:
 ;***Example test program to flash LEDs using key press data***********
 
 flash:
-    out EEAR, key                   ; Address EEPROM
+    out EEAR, rKey                   ; Address EEPROM
     sbi EECR, EERE                  ; Strobe EEPROM
-    in temp, EEDR                   ; Set number of flashes
-    tst temp                        ; Is it zero?
+    in rTmp1, EEDR                   ; Set number of flashes
+    tst rTmp1                        ; Is it zero?
     breq zero                       ; Do RED LED
 
 green_flash:
-    cbi PORTD, GREEN                ; Flash green LED 'temp' times
+    cbi PORTD, GREEN                ; Flash green LED 'rTmp1' times
     rcall delay
     sbi PORTD, GREEN
     rcall delay
-    dec temp
+    dec rTmp1
     brne green_flash
 
 exit:
     ret
 
 zero:
-    ldi temp,10
+    ldi rTmp1,10
 
 flash_again:
     cbi PORTD, RED                  ; Flash red LED ten times
     rcall delay
     sbi PORTD,  RED
     rcall delay
-    dec temp
+    dec rTmp1
     brne flash_again
     rjmp exit
 
@@ -366,10 +439,38 @@ fagain:
 ;***Settling time delay for port to stabilise****************************
 ; Delay about 192us at 4 MHz
 settle:
-    ldi temp,255            ; 1 cycle
+    ldi rTmp1,255            ; 1 cycle
 tagain:
-    dec temp                ; 1 cycle
+    dec rTmp1                ; 1 cycle
     brne tagain             ; 2 if true, 1 if false
     ret                     ; 4 cycles
 
 ; Total:  1 + 4 + 253 * 3 + 2 = 766 cycles =
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+initStaticData:
+
+    ; Copy the static strings into SRAM
+
+    ; Z             = pointer to program memory
+    ; X             = pointer to SRAM
+    ; rTmp1         = counter
+    ; rScratch1     = transfer register
+
+    ; Copy greeting string
+    ; Set up pointers to read from PROGMEM to SRAM
+    ldi rTmp1, kdStaticDataLen
+    ldiw Z, dStaticDataBegin << 1
+    ldiw X, sStaticDataBegin
+initStaticData_Loop:                               ; Actual transfer loop from PROGMEM to SRAM
+        lpm rScratch1, Z+
+        st X+, rScratch1
+        dec rTmp1
+        brne initStaticData_Loop
+
+    ret
