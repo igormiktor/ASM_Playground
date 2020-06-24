@@ -1116,11 +1116,11 @@ Bin1ToHex2:
 
 ; Convert an 8-bit-binary to 2-char uppercase hex string
 
-; Registers rTmp1 and Z passed in as arguments
+; Registers rTmp1 and Z used to pass in arguments
 ; Result returned in 2 bytes starting where Z points
 
 ; rTmp1                 = 8-bit quantity to convert (changed)
-; Z                     = pointer to first (highest) digit of ASCII result (2 char)
+; Z                     = pointer to first (highest) digit of ASCII result (2 char) (changed)
 
 	push rTmp1                                     ; Save original value
 	swap rTmp1                                     ; Move upper to lower nibble
@@ -1129,10 +1129,10 @@ Bin1ToHex2:
 
 Bin1ToHex1:
 	andi rTmp1, 0x0F                               ; Mask upper nibble
-	subi rTmp1, -'0'                               ; Add 0 to convert to ASCII 0-9
-	cpi rTmp1, '9' + 1                             ; Is it A..F?
+	subi rTmp1, -'0'                               ; Add 0 ASCII to convert values 0..9 to ASCII
+	cpi rTmp1, '9' + 1                             ; Is the hex value A..F?
 	brcs Bin1ToHex1a
-	subi rTmp1, -7                                 ; Add 7 for A..F
+	subi rTmp1, -7                                 ; Add 7 to the ASCII value to generate A..F
 Bin1ToHex1a:
 	st Z+, rTmp1                                   ; Store a hex digit
 
