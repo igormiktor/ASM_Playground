@@ -195,7 +195,7 @@
 
 .def rSREG          = r15                       ; Save/Restore status port
 
-.def rTmp1          = r16                       ; Multipurpose registera
+.def rTmp1          = r16                       ; Multipurpose registers
 .def rTmp2          = r17
 
 .def rArgByte0      = r24                       ; For now using C register conventions for function calls
@@ -1116,18 +1116,16 @@ Bin1ToHex2:
 
 ; Convert an 8-bit-binary to 2-char uppercase hex string
 
-; Registers rBinWordH:rBinWordL and Z passed in as arguments
-; Result returned in 4 bytes starting where Z points
+; Registers rTmp1 and Z passed in as arguments
+; Result returned in 2 bytes starting where Z points
 
-; rBinWordH:rBinWordL   = 16-bit quantity to convert (not changed)
-; Z                     = pointer to first (highest) digit of ASCII result
-;                         (1 digit per byte, 4 bytes total, with leading zeros)
-; rTmp1                 = temp (upper) register (changed)
+; rTmp1                 = 8-bit quantity to convert (changed)
+; Z                     = pointer to first (highest) digit of ASCII result (2 char)
 
-	push rTmp1                                     ; Save byte
-	swap rTmp1                                     ; Move Upper to lower nibble
-	rcall Bin1ToHex1                               ; Convenience to make this a function all
-	pop rTmp1                                      ; Restore byte and fall through (instead of another rcall)
+	push rTmp1                                     ; Save original value
+	swap rTmp1                                     ; Move upper to lower nibble
+	rcall Bin1ToHex1                               ; Call into the code below
+	pop rTmp1                                      ; Restore original value and fall into code below
 
 Bin1ToHex1:
 	andi rTmp1, 0x0F                               ; Mask upper nibble
@@ -1136,6 +1134,6 @@ Bin1ToHex1:
 	brcs Bin1ToHex1a
 	subi rTmp1, -7                                 ; Add 7 for A..F
 Bin1ToHex1a:
-	st z+, rTmp1                                   ; Store a hex digit
+	st Z+, rTmp1                                   ; Store a hex digit
 
 	ret
