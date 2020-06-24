@@ -1120,7 +1120,7 @@ Bin1ToHex2:
 ; Result returned in 2 bytes starting where Z points
 
 ; rTmp1                 = 8-bit quantity to convert (changed)
-; Z                     = pointer to first (highest) digit of ASCII result (2 char) (changed)
+; Z                     = pointer to SRAM to first digit of ASCII result (2 char) (changed)
 
 	push rTmp1                                     ; Save original value
 	swap rTmp1                                     ; Move upper to lower nibble
@@ -1134,6 +1134,6 @@ Bin1ToHex1:
 	brcs Bin1ToHex1a
 	subi rTmp1, -7                                 ; Add 7 to the ASCII value to generate A..F
 Bin1ToHex1a:
-	st Z+, rTmp1                                   ; Store a hex digit
+	st Z+, rTmp1                                   ; Store a hex digit, advance Z
 
 	ret
