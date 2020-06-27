@@ -1061,20 +1061,20 @@ getOneBinWordDecDigit:
 
 	clr rTmp1                          ; digit count is zero
 
-getOneBinWordDecDigit1:
+getOneBinWordDecDigit_1:
 	cp rBinWordH, rScratch2            ; Number bigger than decimal?
-	brcs getOneBinWordDecDigit3        ; MSB smaller than decimal -> done (digit = 0)
-	brne getOneBinWordDecDigit2        ; MSB bigger than decimal
+	brcs getOneBinWordDecDigit_3       ; MSB smaller than decimal -> done (digit = 0)
+	brne getOneBinWordDecDigit_2       ; MSB bigger than decimal
 	cp rBinWordL, rScratch1            ; LSB bigger or equal decimal
-	brcs getOneBinWordDecDigit3        ; LSB smaller than decimal -> done (digit = 0)
+	brcs getOneBinWordDecDigit_3       ; LSB smaller than decimal -> done (digit = 0)
 
-getOneBinWordDecDigit2:
+getOneBinWordDecDigit_2:
 	sub rBinWordL, rScratch1           ; Subtract LSB decimal
 	sbc rBinWordH, rScratch2           ; Subtract MSB decimal
 	inc rTmp1                          ; Increment digit count
-	rjmp getOneBinWordDecDigit1        ; Next loop -> try to subtract again
+	rjmp getOneBinWordDecDigit_1       ; Next loop -> try to subtract again
 
-getOneBinWordDecDigit3:
+getOneBinWordDecDigit_3:
 	st Z+, rTmp1                       ; Save digit and increment
 	ret
 
@@ -1099,9 +1099,9 @@ convertBinWordToHexStr:
 ; rTmp1                 = temp (upper) register (changed)
 
 	mov rTmp1, rBinWordH                           ; Load MSB
-	rcall Bin1ToHex2                               ; Convert byte
+	rcall ByteToHex                                ; Convert byte
 	mov rTmp1, rBinWordL                           ; Repeat on LSB
-	rcall Bin1ToHex2
+	rcall ByteToHex                                ; Convert other byte
 	sbiw ZH:ZL, 4                                  ; Reset Z to start
 
 	ret
@@ -1112,7 +1112,7 @@ convertBinWordToHexStr:
 ;  S U B R O U T I N E
 ; **********************************
 
-Bin1ToHex2:
+ByteToHex:
 
 ; Convert an 8-bit-binary to 2-char uppercase hex string
 
@@ -1124,16 +1124,16 @@ Bin1ToHex2:
 
 	push rTmp1                                     ; Save original value
 	swap rTmp1                                     ; Move upper to lower nibble
-	rcall Bin1ToHex1                               ; Call into the code below
+	rcall ByteToHex_1                              ; Call into the code below
 	pop rTmp1                                      ; Restore original value and fall into code below
 
-Bin1ToHex1:
+ByteToHex_1:
 	andi rTmp1, 0x0F                               ; Mask upper nibble
 	subi rTmp1, -'0'                               ; Add 0 ASCII to convert values 0..9 to ASCII
 	cpi rTmp1, '9' + 1                             ; Is the hex value A..F?
-	brcs Bin1ToHex1a
+	brcs ByteToHex_1a
 	subi rTmp1, -7                                 ; Add 7 to the ASCII value to generate A..F
-Bin1ToHex1a:
+ByteToHex_1a:
 	st Z+, rTmp1                                   ; Store a hex digit, advance Z
 
 	ret
