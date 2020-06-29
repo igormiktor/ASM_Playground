@@ -1131,9 +1131,9 @@ ByteToHex_1:
 	andi rTmp1, 0x0F                               ; Mask upper nibble
 	subi rTmp1, -'0'                               ; Add 0 ASCII to convert values 0..9 to ASCII
 	cpi rTmp1, '9' + 1                             ; Is the hex value A..F?
-	brcs ByteToHex_1a
+	brcs ByteToHex_2
 	subi rTmp1, -7                                 ; Add 7 to the ASCII value to generate A..F
-ByteToHex_1a:
+ByteToHex_2:
 	st Z+, rTmp1                                   ; Store a hex digit, advance Z
 
 	ret
