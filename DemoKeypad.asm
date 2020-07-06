@@ -61,33 +61,40 @@
 .equ pInt0Pin                       = PIND
 .equ pInt0PinBit                    = PIND2
 
-; Going for D4-D7 (columns) and B0-3 (rows) an D2 for INT0
+
+; Keypad uses D4-D7 (columns) and B0-3 (rows) an D2 for INT0
+
+; Keypad row pins are Port B pins 0-3
+.equ pRowDirD                       = DDRB
+.equ pRowPort                       = PORTB
+.equ pRowPin                        = PINB
+.equ kRowBitsOnes                   = 0x0F
+.equ kRowBitsZeros                  = 0xF0
+; Keypad row pin bits
+.equ kRow1                          = 3
+.equ kRow2                          = 2
+.equ kRow3                          = 1
+.equ kRow4                          = 0
+
+; Keypad column pins are Port D pins 4-7
+.equ pColDirD                       = DDRD
+.equ pColPort                       = PORTD
+.equ pColPin                        = PIND
+.equ kColBitsOnes                   = 0xF0
+.equ kColBitsZeros                  = 0x0F
+; Keypad columns pin bits
+.equ kCol1                          = 7
+.equ kCol2                          = 6
+.equ kCol3                          = 5
+.equ kCol4                          = 4
+
+
 
 
 ; **********************************
 ;  C O N S T A N T S
 ; **********************************
 
-;Port B pins
-.equ pRowDirD                       = DDRB
-.equ ROW1   = 3 ;keypad input rows
-.equ ROW2   = 2
-.equ ROW3   = 1
-.equ ROW4   = 0
-
-;Port D pins
-.equ pColDirD                       = DDRD
-.equ COL1   = 7 ;keypad output columns
-.equ COL2   = 6
-.equ COL3   = 5
-.equ COL4   = 4
-
-;Port C pins
-.equ GREEN  = 3 ;green LED
-.equ RED    = 2 ;red LED
-
-;Port D pins
-.equ INTR   = 2 ;interrupt input
 
 
 
@@ -95,33 +102,36 @@
 ;  R E G I S T E R  P O L I C Y
 ; ***************************************
 
-.def rScratch1      = r2                        ; Scratch (low) register
-.def rScratch2      = r3                        ; Scratch (low) register
+.def rScratch1                      = r2        ; Scratch (low) register
+.def rScratch2                      = r3        ; Scratch (low) register
 
-.def rBinWordL      = r4                        ; Argument for ASCII conversion
-.def rBinWordH      = r5                        ; Argument for ASCII conversion
+.def rBinWordL                      = r4        ; Argument for ASCII conversion
+.def rBinWordH                      = r5        ; Argument for ASCII conversion
 
-.def rLoop1         = r14                       ; Loop counter
+.def rLoop1                         = r14       ; Loop counter
 
-.def rSREG          = r15                       ; Save/Restore status port
+.def rSREG                          = r15       ; Save/Restore status port
 
-.def rTmp1          = r16                       ; Multipurpose registera
-.def rTmp2          = r17
+.def rTmp1                          = r16       ; Multipurpose register
+.def rTmp2                          = r17       ; Multipurpose register
+.def rDWMSOuter                     = r16       ; Subroutine delayMilliSeconds
 
-.def rKey           = r18                       ; Index of key hit, used to look value in Key Table
+.def rKey                           = r18       ; Index of key hit, used to look value in Key Table
 
-.def rArgByte0      = r24                       ; For now using C register conventions for function calls
-.def rArgByte1      = r25                       ; Second byte arg, or high byte of word arg
+.def rArgByte0                      = r24       ; For now using C register conventions for function calls
+.def rArgByte1                      = r25       ; Second byte arg, or high byte of word arg
 
-.def rCounterLSB    = r26                       ; LSB of word (16-bit) counter (XL)
-.def rCounterMSB    = r27                       ; MSB of word (16-bit) counter (XH)
+.def rDelayUsL                      = r24       ; Subroutine delayMicroSeconds
+.def rDelayUsH                      = r25       ; Subroutine delayMicroSeconds
+.def rMillisL                       = r24       ; Subroutine delayMilliSeconds
+.def rMillisH                       = r25       ; Subroutine delayMilliSeconds
+.def r10ths                         = r24       ; Subroutine delayTenthsOfSeconds
+.def rDTSOuter                      = r25       ; Subroutine delayTenthsOfSeconds
 
-;
-
-
-;***** Registers used by interrupt service routine
-.def key =r17 ;key pointer for EEPROM
-
+.def rDWMSInnerL                    = r26       ; Subroutine delayMilliSeconds
+.def rDWMSInnerH                    = r27       ; Subroutine delayMilliSeconds
+.def rDTSInnerL                     = r26       ; Subroutine delayTenthsOfSeconds
+.def rDTSInnerH                     = r27       ; Subroutine delayTenthsOfSeconds
 
 
 
@@ -157,15 +167,42 @@
 
 
 
-; ************************************
-;  E E P R O M   S E G M E N T
-; ************************************
+; **********************************
+;  M A C R O
+; **********************************
 
-;.eseg
-;.org 0
+; Arguments:  @0 = number of microseconds to delay (16-bit word)
+.macro delayMicroSecondsM
+    ldi rArgByte1, High( @0 )
+    ldi rArgByte0, Low( @0 )
+    call delayMicroSeconds
+.endm
 
-; Look up table for key conversion
-;.db 1, 2, 3, 15, 4, 5, 6, 14, 7, 8, 9, 13, 10, 0, 11, 12
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = number of milliseconds to delay (word value)
+.macro delayMilliSecondsM
+    ldi rArgByte1, High( @0 )
+    ldi rArgByte0, Low( @0 )
+    call delayMilliSeconds
+.endm
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = number of tenths of seconds to delay (byte value)
+.macro delayTenthsOfSecondsM
+    ldi rArgByte0, Low( @0 )
+    call delayTenthsOfSeconds
+.endm
+
 
 
 
@@ -193,7 +230,7 @@ sStaticDataEnd:
 ; **********************************
 
 .cseg
-.org 0
+.org 0x00
 
 
 
@@ -203,9 +240,9 @@ sStaticDataEnd:
 ; ************************************
 
 .org 0x00
-	rjmp reset                 ; Reset vector
+	rjmp main                  ; Reset vector
 .org 0x02
-	rjmp scanKeyPad            ; INT0
+	reti                       ; INT0
 .org 0x04
 	reti                       ; INT1
 .org 0x06
@@ -277,175 +314,143 @@ dStaticDataEnd:
 
 
 ; ***************************************
-;  I N T E R R U P T  H A N D L E R S
+;  I N T E R R U P T   H A N D L E R S
 ; ***************************************
 
-scanKeyPad:
-    in rSREG, SREG                 ; Preserve status register
-    sbis PINB, ROW1                 ; Find row of keypress
-    ldi rKey, 0                      ; Set ROW pointer
-    sbis PINB, ROW2
-    ldi rKey, 4
-    sbis PINB, ROW3
-    ldi rKey, 8
-    sbis PINB, ROW4
-    ldi rKey, 12
-    ldi rTmp1, 0x0F                  ; Change port B I/O to
-    out DDRB, rTmp1                  ; find column press
-    ldi rTmp1, 0xF0                  ; Enable pull ups and
-    out PORTB, rTmp1                 ; Write 0s to rows
-    rcall settle                    ; Allow time for port to settle
-    sbis PINB, COL1                 ; Find column of keypress
-    ldi rTmp1, 0                     ; And set COL pointer
-    sbis PINB, COL2
-    ldi rTmp1, 1
-    sbis PINB, COL3
-    ldi rTmp1, 2
-    sbis PINB, COL4
-    ldi rTmp1, 3
-    add rKey, rTmp1                   ;merge ROW and COL for pointer
-    ldi rTmp1, 0xF0                  ;reinitialise port B as I/O
-    out DDRB, rTmp1                  ; 4 OUT 4 IN
-    ldi rTmp1, 0x0F                  ;rKey columns all low and
-    out PORTB, rTmp1                 ;active pull ups on rows enabled
-    out SREG, status                ;restore status register
-    ldi rTmp1, 0x00
-    out GIMSK, rTmp1                 ; Disable external interrupt have to do this, because we're using a level-triggered interrupt
-    reti
 
 
 
 
 
 
+; ***************************************
+;  M A I N   ( R E S E T )
+; ***************************************
 
-
-;*** Reset handler *************************************************
-reset:
-;    ldi rTmp1, 0xFB          ; Initialize port D as O/I
-;    out DDRD, rTmp1          ; All OUT except PD2 ext.int.
-;    ldi rTmp1, 0x30         ; Turn on sleep mode and power
-;    out MCUCR, rTmp1        ; Down plus interrupt on low level.
-
+main:
 
     initializeStack rTmp1
 
     rcall initStaticData                        ; Move static data from PROGMEM to SRAM
 
-
     ; Initialize LEDs
     sbi pGreenLedDirD, pGreenLedDirDBit
     cbi pGreenLedPort, pGreenLedPortBit
-    sbi pRedLedDirD, pGreenLedDirDBit
-    cbi pRedLedLedPort, pRedLedPortBit
+    sbi pRedLedDirD, pRedLedDirDBit
+    cbi pRedLedPort, pRedLedPortBit
 
-    ; INT0/PD2, external interrupt 0
-    cbi pInt0DirD, pInt0DirDBit     ; Set as input
-    sbi pInt0Port, pInt0PortBit     ; Enable pullup
-
-    ldi rTmp1, 0x40          ; Enable external interrupts
-    out GIMSK, rTmp1
-;    sbi ACSR,ACD ;shut down comparator to save power
-
-main:
-    cli                             ; Disable interrupts
-
-    ; Columns
-    in rTmp1, pColDirD               ; Set PD4-PD7, columns, as output (others unchanged)
-    ori rTmp1, 0xF0
-    out pColDirD, rTmp1
-    in rTmp1, pColDirD               ; Set PD4-PD7 as low
-    andi rTmp1, 0x0F
-    out pColDirD, rTmp1
-
-    ; Rows
-    in rTmp1, pRowDirD               ; Set PB0-PB3, rows, as input
-    andi rTmp1, 0xF0
-    out pRowDirD, rTmp1
-    in rTmp1, pRowDirD               ; Enable pull ups on PB0-PB3
-    ori rTmp1, 0x0F
-    out pRowDirD, rTmp1
-
-    ; LEDs off
-    sbi pGreenLedDirD, pGreenLedDirDBit
+    ; Flash the LEDs
+    sbi pGreenLedPort, pGreenLedPortBit
+    sbi pRedLedPort, pRedLedPortBit
+    delayTenthsOfSecondsM 20
     cbi pGreenLedPort, pGreenLedPortBit
-    sbi pRedLedDirD, pGreenLedDirDBit
-    cbi pRedLedLedPort, pRedLedPortBit
+    cbi pRedLedPort, pRedLedPortBit
 
-    sei                             ; Enable interrupts
+    ; Configure the keypad to accept inputs
+    rcall doConfigureKeypad
 
-    sleep
-
-    rcall flash                     ; Flash LEDs
-
-    ldi rTmp1,0x40                   ; Enable external interrupt
-    out GIMSK,rTmp1
-    rjmp main                       ; Loop
-
-
-
-
-;***Example test program to flash LEDs using key press data***********
-
-flash:
-    out EEAR, rKey                   ; Address EEPROM
-    sbi EECR, EERE                  ; Strobe EEPROM
-    in rTmp1, EEDR                   ; Set number of flashes
-    tst rTmp1                        ; Is it zero?
-    breq zero                       ; Do RED LED
-
-green_flash:
-    cbi PORTD, GREEN                ; Flash green LED 'rTmp1' times
-    rcall delay
-    sbi PORTD, GREEN
-    rcall delay
-    dec rTmp1
-    brne green_flash
-
-exit:
-    ret
-
-zero:
-    ldi rTmp1,10
-
-flash_again:
-    cbi PORTD, RED                  ; Flash red LED ten times
-    rcall delay
-    sbi PORTD,  RED
-    rcall delay
-    dec rTmp1
-    brne flash_again
-    rjmp exit
+    mainLoop:
+        ; Look for rows to go low
+        in rTmp1, pRowPin
+        andi rTmp1, kRowBitsOnes
+        cpi rTmp1, kRowBitsOnes
+        breq mainLoop
+            rcall doKeyHit
+            rjmp mainLoop
 
 
-;****Time Delay Subroutine for LED flash*********************************
-; Delay about 0.25 sec
-delay:
-    ldi coarse,5        ; triple nested FOR loop
-cagain:
-    ldi medium,255      ; giving about 1/4 second
-magain:
-    ldi fine,255        ; delay on 4 MHz clock
-fagain:
-    dec fine
-    brne fagain
-    dec medium
-    brne magain
-    dec coarse
-    brne cagain
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKeyHit:
+
+    rcall doScanKeyPad
+    rcall doFlashLeds
     ret
 
 
-;***Settling time delay for port to stabilise****************************
-; Delay about 192us at 4 MHz
-settle:
-    ldi rTmp1,255            ; 1 cycle
-tagain:
-    dec rTmp1                ; 1 cycle
-    brne tagain             ; 2 if true, 1 if false
-    ret                     ; 4 cycles
 
-; Total:  1 + 4 + 253 * 3 + 2 = 766 cycles =
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doFlashLeds:
+    ldiw Z, sKeyPadTable                        ; Read number corresponding to key from SRAM
+    add ZL, rKey
+    clr rTmp2                                    ; Doesn't affect carry flag
+    adc ZH, rTmp2
+    ld rTmp2, Z                                 ; rTmp2 holds the value of the key
+    tst rTmp2                                   ; Is it zero?
+    breq flashZero                                   ; ...then flash the red LED
+
+    flashGreenLed:                              ; Flash green LED 'rTmp2' times
+        sbi pGreenLedPort, pGreenLedPortBit
+        delayMilliSecondsM 250
+        cbi pGreenLedPort, pGreenLedPortBit
+        delayMilliSecondsM 300
+        dec rTmp2
+        brne flashGreenLed
+    rjmp flashExit
+
+flashZero:
+    sbi pRedLedPort, pRedLedPortBit             ; "0" is a single long flash of red LED
+    delayMilliSecondsM 2000
+    cbi pRedLedPort, pRedLedPortBit
+
+flashExit:
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doScanKeyPad:
+    sbis pRowPin, kRow1                         ; Find row of keypress
+    ldi rKey, 0                                 ; Set Row pointer
+    sbis pRowPin, kRow2
+    ldi rKey, 4
+    sbis pRowPin, kRow3
+    ldi rKey, 8
+    sbis pRowPin, kRow4
+    ldi rKey, 12
+
+    ; To read the column value need to flip the configuration of rows & columns
+    ; Reconfigure rows
+    in rTmp1, pRowDirD                          ; Change Rows to outputs
+    ori rTmp1, kRowBitsOnes
+    out pRowDirD, rTmp1
+    in rTmp1, pColDirD                          ; Change Columns to inputs
+    andi rTmp1, kColBitsZeros
+    out pColDirD, rTmp1
+    ; Reconfigure columns
+    in rTmp1, pRowPort                          ; Set Rows low
+    andi rTmp1, kRowBitsZeros
+    out pRowPort, rTmp1
+    in rTmp1, pColPort                          ; Set pull-up resistors on Cols
+    ori rTmp1, kColBitsOnes
+    out pColPort, rTmp1
+
+    delayMicroSecondsM 200                      ; Allow time for port to settle
+
+    sbis pColPin, kCol1                         ; Find column of keypress
+    ldi rTmp1, 0
+    sbis pColPin, kCol2
+    ldi rTmp1, 1
+    sbis pColPin, kCol3
+    ldi rTmp1, 2
+    sbis pColPin, kCol4
+    ldi rTmp1, 3
+
+    add rKey, rTmp1                             ; Combine ROW and COL for pointer
+
+    ; Re-initialize columns and rows
+    rcall doConfigureKeypad
+
+    ret
 
 
 
@@ -462,7 +467,6 @@ initStaticData:
     ; rTmp1         = counter
     ; rScratch1     = transfer register
 
-    ; Copy greeting string
     ; Set up pointers to read from PROGMEM to SRAM
     ldi rTmp1, kdStaticDataLen
     ldiw Z, dStaticDataBegin << 1
@@ -472,5 +476,188 @@ initStaticData_Loop:                               ; Actual transfer loop from P
         st X+, rScratch1
         dec rTmp1
         brne initStaticData_Loop
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doConfigureKeypad:
+
+    ; Configure the keybad to accept inputs
+
+    ; rTmp1     = used as a scratch register
+
+    ; Configure keypad column pins
+    in rTmp1, pColDirD                          ; Set PD4-PD7, columns, as output (others unchanged)
+    ori rTmp1, kColBitsOnes
+    out pColDirD, rTmp1
+    in rTmp1, pColPort                          ; Set PD4-PD7 as low
+    andi rTmp1, kColBitsZeros
+    out pColPort, rTmp1
+
+    ; Configure keypad row pins
+    in rTmp1, pRowDirD                          ; Set PB0-PB3, rows, as input
+    andi rTmp1, kRowBitsZeros
+    out pRowDirD, rTmp1
+    in rTmp1, pRowPort                          ; Enable pull ups on PB0-PB3
+    ori rTmp1, kRowBitsOnes
+    out pRowPort, rTmp1
+
+    delayMicroSecondsM 200                      ; Allow time for port to settle
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+delayMicroSeconds:
+
+    ; Register r25:24 is passed as parameter (the number of microseconds to delay)
+
+    ; r24 = LSB microseconds to delay
+    ; r25 = MSB microseconds to delay
+
+    ; 1 microsecond = 16 cycles.
+    ; Call/return overhead takes 7-8 cycles (depending on rcall or call).
+
+    ; So burn up 8 more cycles (not counting the ret) to make a whole microsecond, including
+    ; a check to see if we are done (i.e., the request was a 1us delay).
+    ; Then do a loop that burns 16 cycles each time
+
+    nop                                 ; 1 cycle
+    nop                                 ; 1 cycle
+    nop                                 ; 1 cycle
+    nop                                 ; 1 cycle
+    sbiw rDelayUsH:rDelayUsL, 1         ; 2 cycles
+    breq delayMicroseconds_Ret          ; 1 cycle if false/continue, 2 cycles (8 total) if true/branch
+    nop                                 ; 1 cycle (8 total)
+
+    delayMicroseconds_Loop:
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+        nop                             ; 1 cycle
+
+        sbiw rDelayUsH:rDelayUsL, 1     ; 2 cycles
+        brne delayMicroseconds_Loop     ; 2 cycles (16 total) on true/loop, 1 cycle on false/exit_loop
+    nop                                 ; 1 cycle (so total 16 on exit from last loop)
+
+delayMicroseconds_Ret:
+    ret
+
+
+
+;; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+delayMilliSeconds:
+
+    ; Register r25:r24 (milliSecCounter) is passed as parameter
+
+    ; r24 = number of milliseconds to count (comes in as argument)
+    ;     = number of times to execute the outer+inner loops combined
+    ; r25 = outer loop counter byte
+    ; r26 = low byte of inner loop counter word
+    ; r27 = high byte of inner loop counter word
+
+    ; Executing the following combination of inner and outer loop cycles takes almost precisely 1 millisecond at 16 MHz
+    .equ kDWMSOuterCount    = 2
+    .equ kDWMSInnerCount    = 1997
+
+    ; Top of loop for number of milliseconds
+    DWMS_Loop1:
+
+        ; Initialize outer loop (uses a byte counter and counts down)
+        ldi rDWMSOuter, kDWMSOuterCount
+
+        ; Top of outer loop
+        DWMS_Loop2:
+
+            ; Initialze inner loop (uses a word counter and counts down)
+            ldiw rDWMSInner, kDWMSInnerCount
+
+            ; Top of inner loop
+            DWMS_Loop3:
+
+                ; Decrement and test inner loop
+                sbiw rDWMSInnerL:rDWMSInnerL, 1
+                brne DWMS_Loop3
+                ; Done with inner loop
+
+            ; Decrement and test outer loop
+            dec rDWMSOuter
+            brne DWMS_Loop2
+            ; Done with outer loop
+
+        ; Decrement and test millisecond loop
+        sbiw rMillisH:rMillisL, 1
+        brne DWMS_Loop1
+        ; Done with the requested number of milliseconds
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+delayTenthsOfSeconds:
+
+    ; Register r24 (tenthOfSecCounter) is passed as parameter
+    ; r24 = number of tenths-of-seconds to count (comes in as argument)
+    ;     = number of times to execute the outer+inner loops combined
+    ; r25 = outer loop counter byte
+    ; r26 = low byte of inner loop counter word
+    ; r27 = high byte of inner loop counter word
+
+    ; Executing the following combination of inner and outer loop cycles takes almost precisely 0.1 seconds at 16 Mhz
+    .equ kDTSOuterCount     = 7
+    .equ kDTSInnerCount     = 57142
+
+    ; Top of loop for number of tenths-of-seconds
+    DTS_Loop1:
+        ; Initialize outer loop (uses a byte counter and counts down)
+        ldi rDTSOuter, kDTSOuterCount
+
+        ; Top of outer loop
+        DTS_Loop2:
+            ; Initialze inner loop (uses a word counter and counts down)
+            ldiw rDTSInner, kDTSInnerCount
+
+            ; Top of inner loop
+            DTS_Loop3:
+                ; Decrement and test inner loop
+                sbiw rDTSInnerH:rDTSInnerL, 1
+                brne DTS_Loop3
+                ; Done with inner loop
+
+            ; Decrement and test outer loop
+            dec rDTSOuter
+            brne DTS_Loop2
+            ; Done with outer loop
+
+        ; Decrement and test tenth-of-second loop
+        dec r10ths
+        brne DTS_Loop1
+        ; Done with the requested number of tenths-of-seconds
 
     ret
