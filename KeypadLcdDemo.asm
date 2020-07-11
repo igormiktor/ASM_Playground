@@ -161,6 +161,10 @@
 ;  C O N S T A N T S
 ; **********************************
 
+; Message and display related lengths
+.equ kDisplayMsgLen                 = 16
+.equ kDecimalDigitsLen              = 5
+
 ; LCD commands
 .equ kLcdClearDisplay               = 0x01
 .equ kLcdReturnHome                 = 0x02
