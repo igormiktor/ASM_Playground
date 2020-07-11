@@ -329,6 +329,35 @@
 
 
 
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = row  (byte), @1 = column (byte)
+.macro setLcdRowColM
+
+    ldi rArgByte0, @0
+    ldi rArgByte1, @1
+    rcall setLcdRowCol
+
+.endm
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = LCD command (byte)
+.macro sendCmdToLcdM
+
+    ldi rArgByte0, @0
+    rcall sendCmdToLcd
+
+.endm
+
+
+
 
 ; **********************************
 ;  D A T A   S E G M E N T
@@ -612,9 +641,7 @@ initStaticData_Loop:                               ; Actual transfer loop from P
 initializeLcd:
 
     ; Wait 50 milliseconds to ensure full voltage rise
-    clr rArgByte1
-    ldi rArgByte0, 50
-    rcall delayMilliSeconds
+    delayMilliSecondsM 50
 
     cbi pLcdDataSelectPort, pLcdDataSelectPortBit   ; Pull DS pin Low (sending commands)
     cbi pLcdEnablePort, pLcdEnablePortBit           ; Pull E pin Low
@@ -626,50 +653,38 @@ initializeLcd:
     rcall write4BitsToLcd
 
     ; Wait > 4.1 ms
-    ldi rArgByte1, High( 4500 )
-    ldi rArgByte0, Low( 4500 )
-    call delayMicroSeconds
+    delayMicroSecondsM  4500
 
     ; Second time
     ldi rArgByte0, 0x03
     rcall write4BitsToLcd
 
     ; Wait > 4.1 ms
-    ldi rArgByte1, High( 4500 )
-    ldi rArgByte0, Low( 4500 )
-    call delayMicroSeconds
+    delayMicroSecondsM  4500
 
     ; Third try and go...
     ldi rArgByte0, 0x03
     rcall write4BitsToLcd
 
     ; Wait >150 us
-    ldi rArgByte1, High( 200 )
-    ldi rArgByte0, Low( 200 )
-    call delayMicroSeconds
+    delayMicroSecondsM  200
 
     ; This actually sets the 4-bit interface
     ldi rArgByte0, 0x02
     rcall write4BitsToLcd
 
     ; Set nbr of lines and font
-    ldi rArgByte0, ( kLcdFunctionSet | kLcd2Line | kLcd5x8Dots )
-    rcall sendCmdToLcd
+    sendCmdToLcdM  ( kLcdFunctionSet | kLcd2Line | kLcd5x8Dots )
 
     ; Turn on display, with cursor off and blinking off
-    ldi rArgByte0, kLcdDisplayControl | kLcdDisplayOn | kLcdCursorOff | kLcdBlinkOff
-    rcall sendCmdToLcd
+    sendCmdToLcdM ( kLcdDisplayControl | kLcdDisplayOn | kLcdCursorOff | kLcdBlinkOff )
 
     ; Set text entry more (L to R)
-    ldi rArgByte0, kLcdEntryModeSet | kLcdEntryLeft
-    rcall sendCmdToLcd
+    sendCmdToLcdM  ( kLcdEntryModeSet | kLcdEntryLeft )
 
     ; Clear display
-    ldi rArgByte0, kLcdClearDisplay
-    rcall sendCmdToLcd
-    ldi rArgByte1, High( 2000 )
-    ldi rArgByte0, Low( 2000 )
-    call delayMicroSeconds           ; Clear cmd takes a long time...
+    sendCmdToLcdM kLcdClearDisplay
+    delayMicroSecondsM 2000                     ; Clear cmd takes a long time...
 
     ret
 
@@ -696,16 +711,11 @@ write4BitsToLcd:
 
     ; Now pulse the enable pin to have the LCD read the value
     cbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin LOW
-    clr rArgByte1
-    ldi rArgByte0, 2
-    call delayMicroSeconds
+    delayMicroSecondsM 2
     sbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin HIGH (actual enable pulse)
-    ldi rArgByte0, 2
-    call delayMicroSeconds                      ; Enable pulse must be > 450ns
+    delayMicroSecondsM 2                        ; Enable pulse must be > 450ns
     cbi pLcdEnablePort, pLcdEnablePortBit       ; Enable pin LOW
-    ldi rArgByte1, High( 100 )
-    ldi rArgByte0, Low( 100 )                   ; Seems like a lot but didn't work with 70us
-    call delayMicroSeconds                      ; Command needs > 37us to settle
+    delayMicroSecondsM 100                      ; Seems like a lot but didn't work with 70us... Command needs > 37us to settle
 
     ret
 
@@ -781,9 +791,7 @@ displayMsgOnLcd:
     ; rArgByte1     = Used
 
     ; Position display
-    clr rArgByte0
-    clr rArgByte1
-    rcall setLcdRowCol
+    setLcdRowColM 0, 0
 
     ; Set up loop and display
     ldi rTmp1, kDisplayMsgLen
