@@ -129,10 +129,50 @@
 ;  C O N S T A N T S
 ; **********************************
 
+; LCD commands
+.equ kLcdClearDisplay               = 0x01
+.equ kLcdReturnHome                 = 0x02
+.equ kLcdEntryModeSet               = 0x04
+.equ kLcdDisplayControl             = 0x08
+.equ kLcdCursorShift                = 0x10
+.equ kLcdFunctionSet                = 0x20
+.equ kLcdSetCgramAddr               = 0x40
+.equ kLcdSetDdramAddr               = 0x80
+
+; LCD flags for display entry mode
+.equ kLcdEntryRight                 = 0x00
+.equ kLcdEntryLeft                  = 0x02
+.equ kLcdEntryShiftIncrement        = 0x01
+.equ kLcdEntryShiftDecrement        = 0x00
+
+; LCD flags for display on/off control
+.equ kLcdDisplayOn                  = 0x04
+.equ kLcdDisplayOff                 = 0x00
+.equ kLcdCursorOn                   = 0x02
+.equ kLcdCursorOff                  = 0x00
+.equ kLcdBlinkOn                    = 0x01
+.equ kLcdBlinkOff                   = 0x00
+
+; LCD flags for display/cursor shift
+.equ kLcdDisplayMove                = 0x08
+.equ kLcdCursorMove                 = 0x00
+.equ kLcdMoveRight                  = 0x04
+.equ kLcdMoveLeft                   = 0x00
+
+; LCD flags for function set
+.equ kLcd8BitMode                   = 0x10
+.equ kLcd4BitMode                   = 0x00
+.equ kLcd2Line                      = 0x08
+.equ kLcd1Line                      = 0x00
+.equ kLcd5x10Dots                   = 0x04
+.equ kLcd5x8Dots                    = 0x00
+
+; Second row addressing offset
+.equ kLcdSecondRowOffset            = 0x40
 
 
 
-; ***************************************
+;; ***************************************
 ;  R E G I S T E R  P O L I C Y
 ; ***************************************
 
