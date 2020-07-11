@@ -67,33 +67,65 @@
 
 
 
- **********************************
+; **********************************
 ;  P O R T S   A N D   P I N S
 ; **********************************
 
-; Green LED pin
-.equ pGreenLedDirD                  = DDRC
-.equ pGreenLedDirDBit               = DDC3
-.equ pGreenLedPort                  = PORTC
-.equ pGreenLedPortBit               = PORTC3
-.equ pGreenLedPin                   = PINC
-.equ pGreenLedPinBit                = PINC3
-
 ; Red LED pin
-.equ pRedLedDirD                    = DDRC
-.equ pRedLedDirDBit                 = DDC2
-.equ pRedLedPort                    = PORTC
-.equ pRedLedPortBit                 = PORTC2
-.equ pRedLedPin                     = PINC
-.equ pRedLedPinBit                  = PINC2
+.equ pRedLedDirD                    = DDRD
+.equ pRedLedDirDBit                 = DDD2
+.equ pRedLedPort                    = PORTD
+.equ pRedLedPortBit                 = PORTD2
+.equ pRedLedPin                     = PIND
+.equ pRedLedPinBit                  = PIND2
 
-; Interrupt pin
-.equ pInt0DirD                      = DDRD
-.equ pInt0DirDBit                   = DDD2
-.equ pInt0Port                      = PORTD
-.equ pInt0PortBit                   = PORTD2
-.equ pInt0Pin                       = PIND
-.equ pInt0PinBit                    = PIND2
+; Green LED pin
+.equ pGreenLedDirD                  = DDRD
+.equ pGreenLedDirDBit               = DDD3
+.equ pGreenLedPort                  = PORTD
+.equ pGreenLedPortBit               = PORTD3
+.equ pGreenLedPin                   = PIND
+.equ pGreenLedPinBit                = PIND3
+
+
+; LCD uses pins PC0-PC5
+
+; LCD data (register) select pin
+.equ pLcdDataSelectDirD             = DDRC
+.equ pLcdDataSelectDirDBit          = DDC5
+.equ pLcdDataSelectPort             = PORTC
+.equ pLcdDataSelectPortBit          = PORTC5
+
+; LCD enable pin
+.equ pLcdEnableDirD                 = DDRC
+.equ pLcdEnableDirDBit              = DDC4
+.equ pLcdEnablePort                 = PORTC
+.equ pLcdEnablePortBit              = PORTC4
+
+; LCD data 7 pin
+.equ pLcdD7DirD                     = DDRC
+.equ pLcdD7DirDBit                  = DDC3
+.equ pLcdD7Port                     = PORTC
+.equ pLcdD7PortBit                  = PORTC3
+
+; LCD data 6 pin
+.equ pLcdD6DirD                     = DDRC
+.equ pLcdD6DirDBit                  = DDC2
+.equ pLcdD6Port                     = PORTC
+.equ pLcdD6PortBit                  = PORTC2
+
+; LCD data 5 pin
+.equ pLcdD5DirD                     = DDRC
+.equ pLcdD5DirDBit                  = DDC1
+.equ pLcdD5Port                     = PORTC
+.equ pLcdD5PortBit                  = PORTC1
+
+; LCD data 4 pin
+.equ pLcdD4DirD                     = DDRC
+.equ pLcdD4DirDBit                  = DDC0
+.equ pLcdD4Port                     = PORTC
+.equ pLcdD4PortBit                  = PORTC0
+
 
 
 ; Keypad uses D4-D7 (columns) and B0-3 (rows) an D2 for INT0
