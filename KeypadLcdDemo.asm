@@ -358,6 +358,34 @@
 
 
 
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = Data to display (byte)
+.macro sendDataToLcdM
+
+    ldi rArgByte0, @0
+    rcall sendDataToLcd
+
+.endm
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = Data to display (byte)
+.macro sendDataToLcdMR
+
+    mov rArgByte0, @0
+    rcall sendDataToLcd
+
+.endm
+
+
+
 
 ; **********************************
 ;  D A T A   S E G M E N T
@@ -520,7 +548,8 @@ main:
 doKeyHit:
 
     rcall doScanKeyPad
-    rcall doFlashLeds
+    rcall doDisplayKey
+    delayMilliSecondsM 200                      ; Delay for button de-bounce
     ret
 
 
@@ -529,30 +558,16 @@ doKeyHit:
 ;  S U B R O U T I N E
 ; **********************************
 
-doFlashLeds:
+doDisplayKey:
     ldiw Z, sKeyPadTable                        ; Read number corresponding to key from SRAM
     add ZL, rKey
-    clr rTmp2                                    ; Doesn't affect carry flag
+    clr rTmp2                                   ; Doesn't affect carry flag
     adc ZH, rTmp2
     ld rTmp2, Z                                 ; rTmp2 holds the value of the key
-    tst rTmp2                                   ; Is it zero?
-    breq flashZero                                   ; ...then flash the red LED
 
-    flashGreenLed:                              ; Flash green LED 'rTmp2' times
-        sbi pGreenLedPort, pGreenLedPortBit
-        delayMilliSecondsM 250
-        cbi pGreenLedPort, pGreenLedPortBit
-        delayMilliSecondsM 300
-        dec rTmp2
-        brne flashGreenLed
-    rjmp flashExit
-
-flashZero:
-    sbi pRedLedPort, pRedLedPortBit             ; "0" is a single long flash of red LED
-    delayMilliSecondsM 2000
-    cbi pRedLedPort, pRedLedPortBit
-
-flashExit:
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    
     ret
 
 
@@ -727,9 +742,9 @@ write4BitsToLcd:
 
 sendDataToLcd:
 
-    ; Register rArgByte0 is passed as parameter (the 4-bits to write)
+    ; Register rArgByte0 is passed as parameter
 
-    ; rArgByte0 = the 4-bits to write to the LCD in lower nibble (modified)
+    ; rArgByte0 = the byte to write to the LCD (modified)
     ; rScratch1 used as a temporary register
     ; (rTmp1 used as a temporary by write4BitsToLcd)
 
