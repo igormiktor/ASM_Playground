@@ -222,13 +222,13 @@
 
 .def rSREG                          = r15       ; Save/Restore status port
 
+.def rDWMSOuter                     = r16       ; Subroutine delayMilliSeconds
 .def rTmp1                          = r16       ; Multipurpose register
 .def rTmp2                          = r17       ; Multipurpose register
-.def rDWMSOuter                     = r16       ; Subroutine delayMilliSeconds
 
-.def rKey                           = r18       ; Index of key hit, used to look value in Key Table
+.def rKey                           = r18       ; Index of key hit, used to look-up value in Key Table
 
-.def rArgByte0                      = r24       ; For now using C register conventions for function calls
+.def rArgByte0                      = r24       ; First byte arg, or low byte of word arg
 .def rArgByte1                      = r25       ; Second byte arg, or high byte of word arg
 
 .def rDelayUsL                      = r24       ; Subroutine delayMicroSeconds
