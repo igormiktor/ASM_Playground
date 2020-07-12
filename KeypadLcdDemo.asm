@@ -401,6 +401,9 @@ sStaticDataBegin:
     sKeyPadTable:
         .byte 16
 
+    sLcdMessage:
+        .byte 16
+
 sStaticDataEnd:
 
 
@@ -488,6 +491,9 @@ dStaticDataBegin:
 ; Look up table for key conversion
 .db '1', '2', '3', '/', '4', '5', '6', 'x', '7', '8', '9', '-', 'S', 0, 'E', '+'
 
+; LCD Message
+.db 'K', 'e', 'y', ' ', 'h', 'i', 't', ':'
+
 dStaticDataEnd:
 
 .equ kdStaticDataLen = 2 * ( dStaticDataEnd - dStaticDataBegin )
@@ -567,7 +573,7 @@ doDisplayKey:
 
     setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
     sendDataToLcdMR rTmp2
-    
+
     ret
 
 
