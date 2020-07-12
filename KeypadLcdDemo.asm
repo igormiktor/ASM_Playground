@@ -458,7 +458,7 @@ sStaticDataEnd:
 dStaticDataBegin:
 
 ; Look up table for key conversion
-.db 1, 2, 3, 15, 4, 5, 6, 14, 7, 8, 9, 13, 10, 0, 11, 12
+.db 1, 2, 3, '/', 4, 5, 6, 'x', 7, 8, 9, '-', 'S', 0, 'E', '+'
 
 dStaticDataEnd:
 
