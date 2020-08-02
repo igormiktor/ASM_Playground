@@ -386,6 +386,20 @@
 
 
 
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = address of 16 bit message to display on LCD
+.macro displayMsgOnLcdM
+
+    ldiw Z, @0
+    call displayMsgOnLcd
+
+.endm
+
+
+
 
 ; **********************************
 ;  D A T A   S E G M E N T
@@ -401,7 +415,10 @@ sStaticDataBegin:
     sKeyPadTable:
         .byte 16
 
-    sLcdMessage:
+    sLcdGreeting:
+        .byte 16
+
+    sBankLine:
         .byte 16
 
 sStaticDataEnd:
@@ -492,7 +509,10 @@ dStaticDataBegin:
 .db '1', '2', '3', '/', '4', '5', '6', 'x', '7', '8', '9', '-', 'S', 0, 'E', '+'
 
 ; LCD Message
-.db 'K', 'e', 'y', ' ', 'h', 'i', 't', ':'
+.db 'K', 'e', 'y', ' ', 'h', 'i', 't', ':', ' ', ' ', ' ', ' ', ' ', ' ', ' '. ' '
+
+; Blank Line
+.db ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '. ' '
 
 dStaticDataEnd:
 
@@ -532,6 +552,10 @@ main:
     delayTenthsOfSecondsM 20
     cbi pGreenLedPort, pGreenLedPortBit
     cbi pRedLedPort, pRedLedPortBit
+
+    ; Prepare the LCD display
+    setLcdRowColM 0, 0
+    displayMsgOnLcdM sLcdGreeting
 
     ; Configure the keypad to accept inputs
     rcall doConfigureKeypad
