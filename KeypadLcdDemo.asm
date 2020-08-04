@@ -546,22 +546,6 @@ main:
     sbi pRedLedDirD, pRedLedDirDBit
     cbi pRedLedPort, pRedLedPortBit
 
-    ; Configure the LCD pins for output
-    sbi pLcdD4DirD, pLcdD4DirDBit
-    sbi pLcdD5DirD, pLcdD5DirDBit
-    sbi pLcdD6DirD, pLcdD6DirDBit
-    sbi pLcdD7DirD, pLcdD7DirDBit
-    sbi pLcdEnableDirD, pLcdEnableDirDBit
-    sbi pLcdDataSelectDirD, pLcdDataSelectDirDBit
-
-    ; Set LCD pins LOW
-    cbi pLcdD4Port, pLcdD4PortBit
-    cbi pLcdD5Port, pLcdD5PortBit
-    cbi pLcdD6Port, pLcdD6PortBit
-    cbi pLcdD7Port, pLcdD7PortBit
-    cbi pLcdEnablePort, pLcdEnablePortBit
-    cbi pLcdDataSelectPort, pLcdDataSelectPortBit
-
     ; Start the LCD display
     rcall initializeLcd
 
@@ -703,6 +687,22 @@ initStaticData_Loop:                               ; Actual transfer loop from P
 ; **********************************
 
 initializeLcd:
+
+    ; Configure the LCD pins for output
+    sbi pLcdD4DirD, pLcdD4DirDBit
+    sbi pLcdD5DirD, pLcdD5DirDBit
+    sbi pLcdD6DirD, pLcdD6DirDBit
+    sbi pLcdD7DirD, pLcdD7DirDBit
+    sbi pLcdEnableDirD, pLcdEnableDirDBit
+    sbi pLcdDataSelectDirD, pLcdDataSelectDirDBit
+
+    ; Set LCD pins LOW
+    cbi pLcdD4Port, pLcdD4PortBit
+    cbi pLcdD5Port, pLcdD5PortBit
+    cbi pLcdD6Port, pLcdD6PortBit
+    cbi pLcdD7Port, pLcdD7PortBit
+    cbi pLcdEnablePort, pLcdEnablePortBit
+    cbi pLcdDataSelectPort, pLcdDataSelectPortBit
 
     ; Wait 50 milliseconds to ensure full voltage rise
     delayMilliSecondsM 50
