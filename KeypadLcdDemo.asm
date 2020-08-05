@@ -412,8 +412,8 @@
 
 sStaticDataBegin:
 
-    sKeyPadTable:
-        .byte 16
+    sJumpTable:
+        .byte 16*2
 
     sLcdGreeting:
         .byte 16
@@ -505,8 +505,11 @@ sStaticDataEnd:
 
 dStaticDataBegin:
 
-; Look up table for key conversion
-.db '1', '2', '3', '/', '4', '5', '6', 'x', '7', '8', '9', '-', 'S', '0', 'E', '+'
+; Jump table
+.dw  doKey0,  doKey1,  doKey2,  doKey3
+.dw  doKey4,  doKey5,  doKey6,  doKey7
+.dw  doKey8,  doKey9,  doKey10, doKey11
+.dw  doKey12, doKey13, doKey14, doKey15
 
 ; LCD Message
 .db 'K', 'e', 'y', ' ', 'h', 'i', 't', ':', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
@@ -578,6 +581,198 @@ main:
 ;  S U B R O U T I N E
 ; **********************************
 
+doKey0:
+    ldi rTmp2, '1'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey1:
+    ldi rTmp2, '2'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey2:
+    ldi rTmp2, '3'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey3:
+    ldi rTmp2, '/'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey4:
+    ldi rTmp2, '4'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey5:
+    ldi rTmp2, '5'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey6:
+    ldi rTmp2, '6'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey7:
+    ldi rTmp2, 'x'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey8:
+    ldi rTmp2, '7'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey9:
+    ldi rTmp2, '8'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey10:
+    ldi rTmp2, '9'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey11:
+    ldi rTmp2, '-'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey12:
+    ldi rTmp2, 's'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey13:
+    ldi rTmp2, '0'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey14:
+    ldi rTmp2, 'E'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doKey15:
+    ldi rTmp2, '+'
+    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
+    sendDataToLcdMR rTmp2
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
 doKeyHit:
 
     rcall doScanKeyPad
@@ -592,15 +787,14 @@ doKeyHit:
 ; **********************************
 
 doDisplayKey:
-    ldiw Z, sKeyPadTable                        ; Read number corresponding to key from SRAM
-    add ZL, rKey
+    ldiw X, sJumpTable                          ; Read number corresponding to key from SRAM
+    lsl rKey                                    ; Multiply by 2 (jump addresses are words)
+    add XL, rKey                                ; Add the offset (possible carry required)
     clr rTmp2                                   ; Doesn't affect carry flag
-    adc ZH, rTmp2
-    ld rTmp2, Z                                 ; rTmp2 holds the value of the key
-
-    setLcdRowColM 1, 14                         ; Display the key hit second row, second-to-last column
-    sendDataToLcdMR rTmp2
-
+    adc XH, rTmp2                               ; X now points to the low byte in SRAM of the jump address
+    ld ZL, X+
+    ld ZH, X                                    ; Z now contains the address to call
+    icall
     ret
 
 
@@ -608,6 +802,13 @@ doDisplayKey:
 ; **********************************
 ;  S U B R O U T I N E
 ; **********************************
+
+; Returns the number of the key hit in register rKey
+; Numbered as:
+;   0   1   2   3
+;   4   5   6   7
+;   8   9   10  11
+;   12  13  14  15
 
 doScanKeyPad:
     sbis pRowPin, kRow1                         ; Find row of keypress
