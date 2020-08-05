@@ -543,14 +543,14 @@ main:
 
     rcall initStaticData                        ; Move static data from PROGMEM to SRAM
 
+    ; Start the LCD display
+    rcall initializeLcd
+
     ; Initialize LEDs
     sbi pGreenLedDirD, pGreenLedDirDBit
     cbi pGreenLedPort, pGreenLedPortBit
     sbi pRedLedDirD, pRedLedDirDBit
     cbi pRedLedPort, pRedLedPortBit
-
-    ; Start the LCD display
-    rcall initializeLcd
 
     ; Flash the LEDs
     sbi pGreenLedPort, pGreenLedPortBit
