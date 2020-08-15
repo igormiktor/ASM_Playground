@@ -218,6 +218,9 @@
 .def rBinWordL                      = r4        ; Argument for ASCII conversion
 .def rBinWordH                      = r5        ; Argument for ASCII conversion
 
+.def rWorkingNbrL                   = r12       ; Assemble a 16 bit number from keypad entry here (low byte)
+.def rWorkingNbrH                   = r13       ; Assemble a 16 bit number from keypad entry here (high byte)
+
 .def rLoop1                         = r14       ; Loop counter
 
 .def rSREG                          = r15       ; Save/Restore status port
@@ -227,6 +230,10 @@
 .def rTmp2                          = r17       ; Multipurpose register
 
 .def rKey                           = r18       ; Index of key hit, used to look-up value in Key Table
+
+.def rState                         = r19       ; State of operation
+.equ kDigitEntryBit                 = 1         ; Bit 0 set = accumulating digits
+
 
 .def rArgByte0                      = r24       ; First byte arg, or low byte of word arg
 .def rArgByte1                      = r25       ; Second byte arg, or high byte of word arg
@@ -421,6 +428,9 @@ sStaticDataBegin:
     sBankLine:
         .byte 16
 
+    sOverflowMsg:
+        .byte 16
+
 sStaticDataEnd:
 
 
@@ -516,6 +526,9 @@ dStaticDataBegin:
 
 ; Blank Line
 .db ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
+
+; Overflow msg
+.db 'O', 'v', 'e', 'r', 'f', 'l', 'o', 'w', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '
 
 dStaticDataEnd:
 
@@ -853,6 +866,54 @@ doScanKeyPad:
     rcall doConfigureKeypad
 
     ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doNumberKey:
+
+    ; rKey = (inbound) the numerical value of number key
+
+    sbrs rState, kDigitEntryBitNbr
+    rjmp doNumberKey_Continuing
+                                                ; Just started entering a number
+    clr rWorkingNbrH                            ; Clear the registers we accumulate the number in
+    clr rWorkingNbrL
+    sbi rState, kDigitEntryBit                  ; Set that we are in number entry mode
+
+    ; TODO Need to roll the stack up!!!
+
+
+doNumberKey_Continuing:
+    ; Multiply the existing number by 10 to incorporate a new digit
+    add rWorkingNbrL, rKey
+    clr rKey                                    ; Doesn't affect carry flag
+    adc rWorkingNbrH, rKey
+
+    brcs doNumberKey_Overflow
+
+    ret
+
+doNumberKey_Overflow:
+    call doOverflow:
+    ret
+
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doOverflow:
+    ; Prepare the LCD display
+    setLcdRowColM 1, 0
+    displayMsgOnLcdM sOverflowMsg
+
+
 
 
 
@@ -1249,5 +1310,36 @@ delayTenthsOfSeconds:
         dec r10ths
         brne DTS_Loop1
         ; Done with the requested number of tenths-of-seconds
+
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+multU16by8:
+
+    ; r25:r24 = 16-bit multiplicand
+    ; r22 = 8-bit multiplicand
+    ; r18:r19:r20 = result
+
+#define rM16L       r24
+#define rM16H       r25
+#define rM8         r22
+#define rProd0      r18
+#define rProd1      r19
+#define rProd2      r20
+
+    mul rM16L, rM8      ; Multiply LSB
+    movw rProd0, r0     ; Copy result
+
+    mul rM16H, rM8      ; Multiply MSB
+    mov rProd2, r1      ; Copy MSB result to result byte 3
+    add rProd1, r0      ; Add LSB result to result byte 2
+    brcc 1f             ; If no carry, done
+    inc rProd2          ; Do the carry
+multU16by8_1:
 
     ret
