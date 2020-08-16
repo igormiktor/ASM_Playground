@@ -232,7 +232,10 @@
 .def rKey                           = r18       ; Index of key hit, used to look-up value in Key Table
 
 .def rState                         = r19       ; State of operation
-.equ kDigitEntryBit                 = 1         ; Bit 0 set = accumulating digits
+.equ kDigitEntryBit                 = 0x01      ; Bit 0 set = digit entry mode; clear = not digit entry mode
+.equ kDigitEntryBitNbr              = 0         ; Bit number 0
+.equ kNbrSignBit                    = 0x02      ; Bit 1 set = number has negative sign; clear = no negative sign
+.equ kNbrSignBitNbr                 = 1         ; Bit number 1
 
 
 .def rArgByte0                      = r24       ; First byte arg, or low byte of word arg
@@ -880,12 +883,13 @@ doNumberKey:
     sbrs rState, kDigitEntryBitNbr
     rjmp doNumberKey_Continuing
                                                 ; Just started entering a number
+    ; TODO Need to roll the stack up!!!
     clr rWorkingNbrH                            ; Clear the registers we accumulate the number in
     clr rWorkingNbrL
+    cbi rState, kNbrSignBit                     ; Clear the sign indicator bit
     sbi rState, kDigitEntryBit                  ; Set that we are in number entry mode
-
-    ; TODO Need to roll the stack up!!!
-
+    mov rWorkingNbrL, rKey
+    ret
 
 doNumberKey_Continuing:
     ; Multiply the existing number by 10 to incorporate a new digit
