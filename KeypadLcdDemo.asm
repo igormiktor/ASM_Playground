@@ -1227,9 +1227,9 @@ delayMilliSeconds:
 
     ; Register r25:r24 (milliSecCounter) is passed as parameter
 
-    ; r24 = number of milliseconds to count (comes in as argument)
+    ; r25:r24 = number of milliseconds to count (comes in as argument)
     ;     = number of times to execute the outer+inner loops combined
-    ; r25 = outer loop counter byte
+    ; r16 = outer loop counter byte
     ; r26 = low byte of inner loop counter word
     ; r27 = high byte of inner loop counter word
 
@@ -1253,7 +1253,7 @@ delayMilliSeconds:
             DWMS_Loop3:
 
                 ; Decrement and test inner loop
-                sbiw rDWMSInnerL:rDWMSInnerL, 1
+                sbiw rDWMSInnerH:rDWMSInnerL, 1
                 brne DWMS_Loop3
                 ; Done with inner loop
 
