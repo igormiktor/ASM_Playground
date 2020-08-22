@@ -878,12 +878,12 @@ doScanKeyPad:
 ;  S U B R O U T I N E
 ; **********************************
 
-doNumberKey:
+doNumericKey:
 
     ; rKey = (inbound) the numerical value of number key
 
     sbrs rState, kDigitEntryBitNbr
-    rjmp doNumberKey_Continuing
+    rjmp doNumericKey_Continuing
                                                 ; Just started entering a number
     ; TODO Need to roll the stack up!!!
     clr rWorkingNbrH                            ; Clear the registers we accumulate the number in
@@ -893,17 +893,17 @@ doNumberKey:
     mov rWorkingNbrL, rKey
     ret
 
-doNumberKey_Continuing:
+doNumericKey_Continuing:
     ; Multiply the existing number by 10 to incorporate a new digit
     add rWorkingNbrL, rKey
     clr rKey                                    ; Doesn't affect carry flag
     adc rWorkingNbrH, rKey
 
-    brcs doNumberKey_Overflow
+    brcs doNumericKey_Overflow
 
     ret
 
-doNumberKey_Overflow:
+doNumericKey_Overflow:
     call doOverflow:
     ret
 
