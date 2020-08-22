@@ -248,6 +248,8 @@
 .def r10ths                         = r24       ; Subroutine delayTenthsOfSeconds
 .def rDTSOuter                      = r25       ; Subroutine delayTenthsOfSeconds
 
+.def rArgByte2                      = r26       ; Third byte of dword (32 bit) argument
+.def rArgByte3                      = r27       ; Fourth byte of dword (32 bit) argument
 .def rDWMSInnerL                    = r26       ; Subroutine delayMilliSeconds
 .def rDWMSInnerH                    = r27       ; Subroutine delayMilliSeconds
 .def rDTSInnerL                     = r26       ; Subroutine delayTenthsOfSeconds
@@ -1346,4 +1348,34 @@ multU16by8:
     inc rProd2          ; Do the carry
 multU16by8_1:
 
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doWord2sComplement:
+
+    com rArgByte1
+    neg rArgByte0
+    sbci rArgByte1, 0xff
+    ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+doDword2sComplement:
+
+    com rArgByte3
+    com rArgByte2
+    com rArgByte1
+    neg rArgByte0
+    sbci rArgByte1, 0xff
+    sbci rArgByte2, 0xff
+    sbci rArgByte3, 0xff
     ret
