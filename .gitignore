@@ -19,3 +19,4 @@ build
 # One-of-a-kind ignores
 BugReport*.*
 Ignore
+.~*
