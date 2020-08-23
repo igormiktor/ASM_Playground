@@ -295,11 +295,11 @@
 ;  M A C R O
 ; **********************************
 
-; Arguments:  @0 = register base name to be pushed onto stack (H first, L second)
+; Arguments:  @0 = register base name to be pushed onto stack (L first, H second)
 .macro pushw
 
-   push @0H
    push @0L
+   push @0H
 
 .endm
 
@@ -309,11 +309,11 @@
 ;  M A C R O
 ; **********************************
 
-; Arguments:  @0 = register base name to be popped from stack (L first, H second)
+; Arguments:  @0 = register base name to be popped from stack (H first, L second)
 .macro popw
 
-   pop @0L
    pop @0H
+   pop @0L
 
 .endm
 
