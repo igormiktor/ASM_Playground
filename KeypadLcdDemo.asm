@@ -1482,40 +1482,112 @@ convertDwordToBcdArray:
     ;                         (1 digit per byte, 10 bytes total, with leading zeros)
     ; rScratch2:rScratch1   = scratch registers sometimes used as a 16-bit quantity (changed)
 
-	push rArgByte3                     ; Save number
-	push rArgByte2
-    push rArgByte1
-    push rArgByte0
+	push rArgByte0                         ; Save number
+	push rArgByte1
+    push rArgByte2
+    push rArgByte3
 
-	ldi rTmp1, High( 10000 )           ; Start with ten thousands ; TODO
-	mov rScratch2, rTmp1
-	ldi rTmp1, Low( 10000 )
-	mov rScratch1, rTmp1
-	rcall getOneBinWordDecDigit        ; Calculate digit
+    pushw Z                               ; Save Z
 
-	ldi rTmp1, High( 1000 )            ; Next with thousands
-	mov rScratch2, rTmp1
-	ldi rTmp1, Low( 1000 )
-	mov rScratch1, rTmp1
-	rcall getOneBinWordDecDigit        ; Calculate digit
+    ldi rTmp1, Byte4( kDecimal_1e9 )      ; Start with 1,000,000,000
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e9 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e9 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e9 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
 
-	ldi rTmp1, High( 100 )             ; Next with hundreds
-	mov rScratch2, rTmp1
-	ldi rTmp1, Low( 100 )
-	mov rScratch1, rTmp1
-	rcall getOneBinWordDecDigit        ; Calculate digit
+    ldi rTmp1, Byte4( kDecimal_1e8 )      ; Next 100,000,000
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e8 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e8 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e8 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
 
-	ldi rTmp1, High( 10 )              ; Next with tens
-	mov rScratch2, rTmp1
-	ldi rTmp1, Low( 10 )
-	mov rScratch1, rTmp1
-	rcall getOneBinWordDecDigit        ; Calculate digit
+    ldi rTmp1, Byte4( kDecimal_1e7 )      ; Next 10,000,000
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e7 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e7 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e7 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
 
-	st Z,rBinWordL                     ; Remainder are ones
-	sbiw ZH:ZL, 4                      ; Set pointer to first BCD
+    ldi rTmp1, Byte4( kDecimal_1e6 )      ; Next 1,000,000
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e6 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e6 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e6 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
 
-	pop rBinWordL                      ; Restore original binary
-	pop rBinWordH
+    ldi rTmp1, Byte4( kDecimal_1e5 )      ; Next 100,000
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e5 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e5 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e5 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
+
+    ldi rTmp1, Byte4( kDecimal_1e4 )      ; Next 10,000
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e4 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e4 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e4 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
+
+    ldi rTmp1, Byte4( kDecimal_1e3 )      ; Next 1,000
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e3 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e3 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e3 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
+
+    ldi rTmp1, Byte4( kDecimal_1e2 )      ; Next 100
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e2 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e2 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e2 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
+
+    ldi rTmp1, Byte4( kDecimal_1e1 )      ; Next 10
+    mov rScratch3, rTmp1
+    ldi rTmp1, Byte3( kDecimal_1e1 )
+    mov rScratch2, rTmp1
+    ldi rTmp1, Byte2( kDecimal_1e1 )
+    mov rScratch1, rTmp1
+    ldi rTmp1, Byte1( kDecimal_1e1 )
+    mov rScratch0, rTmp1
+    rcall getOneDecimalDigit
+
+    st Z, rArgByte0                       ; Remainder is just the ones
+
+	popw Z                                ; Restore Z to where it was (created 10 digits)
+
+	pop rArgByte3                         ; Restore original value
+	pop rArgByte2
+    pop rArgByte1
+    pop rArgByte0
+
 	ret
 
 
@@ -1524,37 +1596,43 @@ convertDwordToBcdArray:
 ;  S U B R O U T I N E
 ; **********************************
 
-getOneBinWordDecDigit:
+getOneDecimalDigit:
 
     ; Determine one decimal digit by continued subtraction of a binary decimal value
 
-    ; Registers rBinWordH:rBinWordL, rScratch2:rScratch1, and Z passed in as arguments
-    ; Result returned where Z points; Z incremented, rBinWordH:rBinWordL contains remainder
+    ; Registers rArgByte3:rArgByte0, rScratch3:rScratch0, and Z passed in as arguments
+    ; Result returned where Z points; Z incremented, rArgByte3:rArgByte0 contains remainder
 
-    ; rBinWordH:rBinWordL   = 16-bit quantity to be decimated (changed)
+    ; rArgByte3:rArgByte0   = 32-bit quantity to be decimated (changed)
     ; Z                     = pointer to store resulting BCD digit  (changed)
-    ; rScratch2:rScratch1   = 16-bit binary decimal value (unchanged)
+    ; rScratch3:rScratch0   = 32-bit binary decimal value (unchanged)
+    ; rTmp1                 = Used
 
 	clr rTmp1                          ; digit count is zero
 
-getOneBinWordDecDigit_1:
-	cp rBinWordH, rScratch2            ; Number bigger than decimal?
-	brcs getOneBinWordDecDigit_3       ; MSB smaller than decimal -> done (digit = 0)
-	brne getOneBinWordDecDigit_2       ; MSB bigger than decimal
-	cp rBinWordL, rScratch1            ; LSB bigger or equal decimal
-	brcs getOneBinWordDecDigit_3       ; LSB smaller than decimal -> done (digit = 0)
+getOneDecimalDigit_1:
+	cp rArgByte3, rScratch3            ; Compare Byte3 to decimal byte
+	brcs getOneDecimalDigit_3          ; Byte3 smaller than decimal byte -> done (digit = 0)
+	brne getOneDecimalDigit_2          ; Byte3 bigger than decimal byte -> subtract
+	cp rArgByte2, rScratch2            ; Byte3 equal, so compare Byte2
+	brcs getOneDecimalDigit_3          ; Byte2 smaller than decimal -> done (digit = 0)
+    brne getOneDecimalDigit_2          ; Byte2 bigger than decimal byte -> subtract
+    cp rArgByte1, rScratch1            ; Byte2 equal, so compate Byte1
+    brcs getOneDecimalDigit_3          ; Byte1 smaller than decimal -> done (digit = 0)
+    brne getOneDecimalDigit_2          ; Byte1 bigger than decimal byte -> subtract
+    cp rArgByte0, rScratch0            ; Byte1 equal so compare Byte0
+    brcs getOneDecimalDigit_3          ; Byte0 smaller than decimal -> done (digit = 0)
 
-getOneBinWordDecDigit_2:
-	sub rBinWordL, rScratch1           ; Subtract LSB decimal
-	sbc rBinWordH, rScratch2           ; Subtract MSB decimal
+getOneDecimalDigit_2:
+    sub rArgByte0, rScratch0           ; Subtract LSB decimal
+    sbc rArgByte1, rScratch1           ; Subtract LSB decimal
+    sbc rArgByte2, rScratch2           ; Subtract LSB decimal
+    sbc rArgByte3, rScratch3           ; Subtract LSB decimal
 	inc rTmp1                          ; Increment digit count
-	rjmp getOneBinWordDecDigit_1       ; Next loop -> try to subtract again
+	rjmp getOneDecimalDigit_1          ; Next loop -> try to subtract again
 
-getOneBinWordDecDigit_3:
+getOneDecimalDigit_3:
 	st Z+, rTmp1                       ; Save digit and increment
-	ret
-
-
 
 
 
