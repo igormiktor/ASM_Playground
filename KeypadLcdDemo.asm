@@ -206,6 +206,17 @@
 ; Second row addressing offset
 .equ kLcdSecondRowOffset            = 0x40
 
+; Decimal constants (for conversion to BCD values)
+.equ kDecimal_1e9                   = 1000000000
+.equ kDecimal_1e8                   = 100000000
+.equ kDecimal_1e7                   = 10000000
+.equ kDecimal_1e6                   = 1000000
+.equ kDecimal_1e5                   = 100000
+.equ kDecimal_1e4                   = 10000
+.equ kDecimal_1e3                   = 1000
+.equ kDecimal_1e2                   = 100
+.equ kDecimal_1e1                   = 10
+.equ kDecimal_1e0                   = 1
 
 
 ;; ***************************************
