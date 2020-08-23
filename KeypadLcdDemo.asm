@@ -1379,3 +1379,196 @@ doDword2sComplement:
     sbci rArgByte2, 0xff
     sbci rArgByte3, 0xff
     ret
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+convertDwordToAscStr:
+
+    ; Convert a DWORD (32-bits, signed) to a 10 char decimal ASCII string
+
+    ; Registers rArgByte3:rArgByte0 and Z passed in as arguments
+    ; Result returned in 10-bytes starting where Z points
+
+    ; rArgByte3:rArgByte0   = 32-bit quantity to convert (not changed)
+    ; Z                     = pointer to first (highest) digit of ASCII result
+    ;                         (1 digit per byte, 10 bytes total, with leading spaces)
+    ; rScratch2:rScratch1   = scratch registers sometimes used as a 16-bit quantity (changed)
+
+	rcall convertDwordToBcdArray       ; convert binary to BCD
+	ldi rTmp1, 4                       ; Counter is 4 leading digits
+	mov rScratch1, rTmp1
+
+convertBinWordToAscStr1:
+	ld rTmp1, Z                        ; read a BCD digit
+	tst rTmp1                          ; check if leading zero
+	brne convertBinWordToAscStr2       ; No, found digit >0
+	ldi rTmp1, ' '                     ; overwrite with blank
+	st Z+, rTmp1                       ; store and set to next position
+	dec rScratch1                      ; decrement counter
+	brne convertBinWordToAscStr1       ; further leading blanks
+	ld rTmp1, Z                        ; Read the last BCD
+
+convertBinWordToAscStr2:
+	inc rScratch1                      ; one more char
+
+convertBinWordToAscStr3:
+	subi rTmp1, -'0'                   ; Add '0'
+	st Z+, rTmp1                       ; store and inc pointer
+	ld rTmp1, Z                        ; read next char
+	dec rScratch1                      ; more chars?
+	brne convertBinWordToAscStr3       ; yes, go on
+	sbiw ZH:ZL, 5                      ; Pointer to beginning of the BCD
+	ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+convertDwordToBcdArray:
+
+    ; Convert a DWORD (32 bits) to a 10-digit-BCD array
+
+    ; Registers rArgByte3:rArgByte0 and Z passed in as arguments
+    ; Result returned in 10-bytes starting where Z points
+
+    ; rArgByte3:rArgByte0   = 32-bit quantity to convert (not changed)
+    ; Z                     = pointer to first (highest) digit of BCD result
+    ;                         (1 digit per byte, 10 bytes total, with leading zeros)
+    ; rScratch2:rScratch1   = scratch registers sometimes used as a 16-bit quantity (changed)
+
+	push rArgByte3                     ; Save number
+	push rArgByte2
+    push rArgByte1
+    push rArgByte0
+
+	ldi rTmp1, High( 10000 )           ; Start with ten thousands ; TODO
+	mov rScratch2, rTmp1
+	ldi rTmp1, Low( 10000 )
+	mov rScratch1, rTmp1
+	rcall getOneBinWordDecDigit        ; Calculate digit
+
+	ldi rTmp1, High( 1000 )            ; Next with thousands
+	mov rScratch2, rTmp1
+	ldi rTmp1, Low( 1000 )
+	mov rScratch1, rTmp1
+	rcall getOneBinWordDecDigit        ; Calculate digit
+
+	ldi rTmp1, High( 100 )             ; Next with hundreds
+	mov rScratch2, rTmp1
+	ldi rTmp1, Low( 100 )
+	mov rScratch1, rTmp1
+	rcall getOneBinWordDecDigit        ; Calculate digit
+
+	ldi rTmp1, High( 10 )              ; Next with tens
+	mov rScratch2, rTmp1
+	ldi rTmp1, Low( 10 )
+	mov rScratch1, rTmp1
+	rcall getOneBinWordDecDigit        ; Calculate digit
+
+	st Z,rBinWordL                     ; Remainder are ones
+	sbiw ZH:ZL, 4                      ; Set pointer to first BCD
+
+	pop rBinWordL                      ; Restore original binary
+	pop rBinWordH
+	ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+getOneBinWordDecDigit:
+
+    ; Determine one decimal digit by continued subtraction of a binary decimal value
+
+    ; Registers rBinWordH:rBinWordL, rScratch2:rScratch1, and Z passed in as arguments
+    ; Result returned where Z points; Z incremented, rBinWordH:rBinWordL contains remainder
+
+    ; rBinWordH:rBinWordL   = 16-bit quantity to be decimated (changed)
+    ; Z                     = pointer to store resulting BCD digit  (changed)
+    ; rScratch2:rScratch1   = 16-bit binary decimal value (unchanged)
+
+	clr rTmp1                          ; digit count is zero
+
+getOneBinWordDecDigit_1:
+	cp rBinWordH, rScratch2            ; Number bigger than decimal?
+	brcs getOneBinWordDecDigit_3       ; MSB smaller than decimal -> done (digit = 0)
+	brne getOneBinWordDecDigit_2       ; MSB bigger than decimal
+	cp rBinWordL, rScratch1            ; LSB bigger or equal decimal
+	brcs getOneBinWordDecDigit_3       ; LSB smaller than decimal -> done (digit = 0)
+
+getOneBinWordDecDigit_2:
+	sub rBinWordL, rScratch1           ; Subtract LSB decimal
+	sbc rBinWordH, rScratch2           ; Subtract MSB decimal
+	inc rTmp1                          ; Increment digit count
+	rjmp getOneBinWordDecDigit_1       ; Next loop -> try to subtract again
+
+getOneBinWordDecDigit_3:
+	st Z+, rTmp1                       ; Save digit and increment
+	ret
+
+
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+convertBinWordToHexStr:
+
+; Convert a 16-bit-binary to a 4 char hex ASCII string
+
+; Registers rBinWordH:rBinWordL and Z passed in as arguments
+; Result returned in 4 bytes starting where Z points
+
+; rBinWordH:rBinWordL   = 16-bit quantity to convert (not changed)
+; Z                     = pointer to first (highest) digit of ASCII result
+;                         (1 digit per byte, 4 bytes total, with leading zeros)
+; rTmp1                 = temp (upper) register (changed)
+
+	mov rTmp1, rBinWordH                           ; Load MSB
+	rcall ByteToHex                                ; Convert byte
+	mov rTmp1, rBinWordL                           ; Repeat on LSB
+	rcall ByteToHex                                ; Convert other byte
+	sbiw ZH:ZL, 4                                  ; Reset Z to start
+
+	ret
+
+
+
+; **********************************
+;  S U B R O U T I N E
+; **********************************
+
+ByteToHex:
+
+; Convert an 8-bit-binary to 2-char uppercase hex string
+
+; Registers rTmp1 and Z used to pass in arguments
+; Result returned in 2 bytes starting where Z points
+
+; rTmp1                 = 8-bit quantity to convert (changed)
+; Z                     = pointer to SRAM to first digit of ASCII result (2 char) (changed)
+
+	push rTmp1                                     ; Save original value
+	swap rTmp1                                     ; Move upper to lower nibble
+	rcall ByteToHex_1                              ; Call into the code below
+	pop rTmp1                                      ; Restore original value and fall into code below
+
+ByteToHex_1:
+	andi rTmp1, 0x0F                               ; Mask upper nibble
+	subi rTmp1, -'0'                               ; Add 0 ASCII to convert values 0..9 to ASCII
+	cpi rTmp1, '9' + 1                             ; Is the hex value A..F?
+	brcs ByteToHex_2
+	subi rTmp1, -7                                 ; Add 7 to the ASCII value to generate A..F
+ByteToHex_2:
+	st Z+, rTmp1                                   ; Store a hex digit, advance Z
+
+	ret
