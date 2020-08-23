@@ -212,11 +212,13 @@
 ;  R E G I S T E R  P O L I C Y
 ; ***************************************
 
-.def rScratch1                      = r2        ; Scratch (low) register
-.def rScratch2                      = r3        ; Scratch (low) register
+.def rScratch0                      = r2        ; Scratch (low) register
+.def rScratch1                      = r3        ; Scratch (low) register
+.def rScratch2                      = r4        ; Scratch (low) register
+.def rScratch3                      = r5        ; Scratch (low) register
 
-.def rBinWordL                      = r4        ; Argument for ASCII conversion
-.def rBinWordH                      = r5        ; Argument for ASCII conversion
+.def rBinWordL                      = r6        ; Argument for ASCII conversion
+.def rBinWordH                      = r7        ; Argument for ASCII conversion
 
 .def rWorkingNbrL                   = r12       ; Assemble a 16 bit number from keypad entry here (low byte)
 .def rWorkingNbrH                   = r13       ; Assemble a 16 bit number from keypad entry here (high byte)
