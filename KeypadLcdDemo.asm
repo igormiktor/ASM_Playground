@@ -293,6 +293,34 @@
 ;  M A C R O
 ; **********************************
 
+; Arguments:  @0 = register base name to be pushed onto stack (H first, L second)
+.macro pushw
+
+   push @0H
+   push @0L
+
+.endm
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
+; Arguments:  @0 = register base name to be popped from stack (L first, H second)
+.macro popw
+
+   pop @0L
+   pop @0H
+
+.endm
+
+
+
+; **********************************
+;  M A C R O
+; **********************************
+
 ; Arguments:  @0 = number of microseconds to delay (16-bit word)
 .macro delayMicroSecondsM
     ldi rArgByte1, High( @0 )
