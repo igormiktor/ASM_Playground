@@ -479,6 +479,11 @@ sStaticDataBegin:
 
 sStaticDataEnd:
 
+sBCDWithSign:
+    .byte 1
+sBCDhere:
+    .byte 10
+
 
 
 
@@ -1430,38 +1435,65 @@ convertDwordToAscStr:
 
     ; Convert a DWORD (32-bits, signed) to a 10 char decimal ASCII string
 
-    ; Registers rArgByte3:rArgByte0 and Z passed in as arguments
+    ; Registers rArgByte3:rArgByte0 passed in as arguments
     ; Result returned in 10-bytes starting where Z points
 
     ; rArgByte3:rArgByte0   = 32-bit quantity to convert (not changed)
-    ; Z                     = pointer to first (highest) digit of ASCII result
     ;                         (1 digit per byte, 10 bytes total, with leading spaces)
     ; rScratch2:rScratch1   = scratch registers sometimes used as a 16-bit quantity (changed)
 
-	rcall convertDwordToBcdArray       ; convert binary to BCD
-	ldi rTmp1, 4                       ; Counter is 4 leading digits
-	mov rScratch1, rTmp1
+    push rArgByte0                         ; Save number
+	push rArgByte1
+    push rArgByte2
+    push rArgByte3
 
-convertBinWordToAscStr1:
+    ldiw Z, sBCDWithSign
+    ldi rTmp2, ' '                      ; Put a space in the leading spot
+    st Z+, rTmp2                        ; (will be overwritten with a '-' if needed)
+
+.equ kSignBit = 7
+
+    clr rTmp1
+    sbrs rArgByte3, kSignBit            ; Check for negative number
+    rjmp convertDwordToAscStr_0
+    sbr rTmp2, 0x01                        ; Set flag for negative number
+    rcall doDword2sComplement           ; Convert to the positive (unsigned) number
+
+convertDwordToAscStr_0:
+	rcall convertDwordToBcdArray       ; convert binary to BCD
+	ldi rTmp1, 9                       ; Counter is 9 leading digits
+	mov rScratch0, rTmp1
+
+convertDwordToAscStr_1:
 	ld rTmp1, Z                        ; read a BCD digit
 	tst rTmp1                          ; check if leading zero
-	brne convertBinWordToAscStr2       ; No, found digit >0
+	brne convertDwordToAscStr_2       ; No, found digit >0
 	ldi rTmp1, ' '                     ; overwrite with blank
 	st Z+, rTmp1                       ; store and set to next position
-	dec rScratch1                      ; decrement counter
-	brne convertBinWordToAscStr1       ; further leading blanks
-	ld rTmp1, Z                        ; Read the last BCD
+	dec rScratch0                      ; decrement counter
+	brne convertDwordToAscStr_1       ; More BCD digits to read
+	ld rTmp1, Z                        ; Now read the last BCD (can't be a space)
 
-convertBinWordToAscStr2:
-	inc rScratch1                      ; one more char
+convertDwordToAscStr_2:
+	inc rScratch0                      ; one more char
+    sbrs rTmp2, 0                      ; Check for negative number
+    rjmp convertDwordToAscStr_3        ; Not negative so jmp
+    ldi rTmp2, '-'
+    st -Z, rTmp2                       ; Back up one and store a minus sign
+    st Z+, rTmp2                         ; Do it again to restore the Z position
 
-convertBinWordToAscStr3:
+convertDwordToAscStr_3:
 	subi rTmp1, -'0'                   ; Add '0'
 	st Z+, rTmp1                       ; store and inc pointer
 	ld rTmp1, Z                        ; read next char
-	dec rScratch1                      ; more chars?
-	brne convertBinWordToAscStr3       ; yes, go on
-	sbiw ZH:ZL, 5                      ; Pointer to beginning of the BCD
+	dec rScratch0                      ; more chars?
+	brne convertDwordToAscStr_3       ; yes, go on
+
+    pop rArgByte3                       ; Restore original value
+	pop rArgByte2
+    pop rArgByte1
+    pop rArgByte0
+
 	ret
 
 
@@ -1488,6 +1520,8 @@ convertDwordToBcdArray:
     push rArgByte3
 
     pushw Z                               ; Save Z
+
+
 
     ldi rTmp1, Byte4( kDecimal_1e9 )      ; Start with 1,000,000,000
     mov rScratch3, rTmp1
