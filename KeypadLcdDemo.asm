@@ -206,6 +206,9 @@
 ; Second row addressing offset
 .equ kLcdSecondRowOffset            = 0x40
 
+; Sign bit number for signed values
+.equ kSignBitNbr                    = 7
+
 ; Decimal constants (for conversion to BCD values)
 .equ kDecimal_1e9                   = 1000000000
 .equ kDecimal_1e8                   = 100000000
@@ -219,7 +222,8 @@
 .equ kDecimal_1e0                   = 1
 
 
-;; ***************************************
+
+; ***************************************
 ;  R E G I S T E R  P O L I C Y
 ; ***************************************
 
@@ -479,9 +483,9 @@ sStaticDataBegin:
 
 sStaticDataEnd:
 
-sBCDWithSign:
+sAsciiNumberStr:
     .byte 1
-sBCDhere:
+sBcdNumberArray:
     .byte 10
 
 
@@ -1402,20 +1406,14 @@ multU16by8_1:
 ;  S U B R O U T I N E
 ; **********************************
 
-doWord2sComplement:
-
-    com rArgByte1
-    neg rArgByte0
-    sbci rArgByte1, 0xff
-    ret
-
-
-
-; **********************************
-;  S U B R O U T I N E
-; **********************************
-
 doDword2sComplement:
+
+; Convert a DWORD (32-bits, signed) to its 2s complement
+
+; Registers rArgByte3:rArgByte0 passed in as arguments
+; Results returned in rArgByte3:rArgByte0 (conversion done in place)
+
+; rArgByte3:rArgByte0   = 32-bit quantity to convert (conversion done in place)
 
     com rArgByte3
     com rArgByte2
@@ -1427,74 +1425,75 @@ doDword2sComplement:
     ret
 
 
+
 ; **********************************
 ;  S U B R O U T I N E
 ; **********************************
 
 convertDwordToAscStr:
 
-    ; Convert a DWORD (32-bits, signed) to a 10 char decimal ASCII string
+    ; Convert a DWORD (32-bits, signed) to an 11 char decimal ASCII string
 
     ; Registers rArgByte3:rArgByte0 passed in as arguments
-    ; Result returned in 10-bytes starting where Z points
+    ; Result returned in 11-bytes in SRAM starting at sAsciiNumberStr
 
     ; rArgByte3:rArgByte0   = 32-bit quantity to convert (not changed)
-    ;                         (1 digit per byte, 10 bytes total, with leading spaces)
-    ; rScratch2:rScratch1   = scratch registers sometimes used as a 16-bit quantity (changed)
+    ; rTmp1                 = working register (changed)
+    ; rTmp2                 = working register (changed)
+    ; rScratch0             = working register (changed)
+    ; Z                     = working register (changed)
 
-    push rArgByte0                         ; Save number
+    push rArgByte0                      ; Save the number
 	push rArgByte1
     push rArgByte2
     push rArgByte3
 
-    ldiw Z, sBCDWithSign
-    ldi rTmp2, ' '                      ; Put a space in the leading spot
-    st Z+, rTmp2                        ; (will be overwritten with a '-' if needed)
-
-.equ kSignBit = 7
-
-    clr rTmp1
-    sbrs rArgByte3, kSignBit            ; Check for negative number
-    rjmp convertDwordToAscStr_0
-    sbr rTmp2, 0x01                        ; Set flag for negative number
-    rcall doDword2sComplement           ; Convert to the positive (unsigned) number
+    ldiw Z, sAsciiNumberStr
+    ldi rTmp1, ' '                      ; Put a space in the leading spot
+    st Z+, rTmp1                        ; (will be overwritten with a '-' if needed)
+                                        ; Z now points to sBcdNumberArray
+    clr rTmp2                           ; rTmp2 is a flag for negative numbers
+    sbrs rArgByte3, kSignBitNbr         ; Check for negative number
+    rjmp convertDwordToAscStr_0         ; If not negative, go right to conversion
+    sbr rTmp2, 0x01                     ; Set flag for negative number
+    rcall doDword2sComplement           ; Convert to the corresponding unsigned number
 
 convertDwordToAscStr_0:
-	rcall convertDwordToBcdArray       ; convert binary to BCD
-	ldi rTmp1, 9                       ; Counter is 9 leading digits
-	mov rScratch0, rTmp1
+    rcall convertDwordToBcdArray        ; Convert binary DWORD to BCD
+	ldi rTmp1, 9
+    mov rScratch0, rTmp1                ; Counter, rScratch0, is set to 9 for skip zeros loop
 
-convertDwordToAscStr_1:
-	ld rTmp1, Z                        ; read a BCD digit
-	tst rTmp1                          ; check if leading zero
-	brne convertDwordToAscStr_2       ; No, found digit >0
-	ldi rTmp1, ' '                     ; overwrite with blank
-	st Z+, rTmp1                       ; store and set to next position
-	dec rScratch0                      ; decrement counter
-	brne convertDwordToAscStr_1       ; More BCD digits to read
-	ld rTmp1, Z                        ; Now read the last BCD (can't be a space)
+convertDwordToAscStr_1:                 ; This loop is to skip leading zeros....
+    ld rTmp1, Z                         ; Read a BCD digit
+    tst rTmp1                           ; Check if leading zero
+    brne convertDwordToAscStr_2         ; No, we found non-zero digit
+    ldi rTmp1, ' '                      ; Overwrite the 0 with a blank
+    st Z+, rTmp1                        ; Store and advance Z to next position
+    dec rScratch0                       ; Decrement counter of how many BCD digits we processed
+    brne convertDwordToAscStr_1         ; Branch if more BCD digits to read (this loop counts down from 9)
+    ld rTmp1, Z                         ; If get here, read the last BCD digit and then convert to ASCII, even if 0
 
-convertDwordToAscStr_2:
-	inc rScratch0                      ; one more char
-    sbrs rTmp2, 0                      ; Check for negative number
-    rjmp convertDwordToAscStr_3        ; Not negative so jmp
-    ldi rTmp2, '-'
-    st -Z, rTmp2                       ; Back up one and store a minus sign
-    st Z+, rTmp2                         ; Do it again to restore the Z position
+convertDwordToAscStr_2:                 ; This segment deals with the first non-zero (or last) BCD digit...
+	inc rScratch0                       ; Add 1 because (non-zero BCD)->ASCII loop below counts "from 10"
+    sbrs rTmp2, 0                       ; Check for negative number
+    rjmp convertDwordToAscStr_3         ; Not negative so jmp directly to conversion to ASCII
+    ldi rTmp2, '-'                      ; Get here, so we have a negative number
+    st -Z, rTmp2                        ; Back up one and store a minus sign
+    st Z+, rTmp2                        ; Do it again but advance Z to restore the Z position
 
-convertDwordToAscStr_3:
-	subi rTmp1, -'0'                   ; Add '0'
-	st Z+, rTmp1                       ; store and inc pointer
-	ld rTmp1, Z                        ; read next char
-	dec rScratch0                      ; more chars?
-	brne convertDwordToAscStr_3       ; yes, go on
+convertDwordToAscStr_3:                 ; This loop converts non-zero BCD digits to ASCII...
+    subi rTmp1, -'0'                    ; Add '0' to get ASCII version of number
+    st Z+, rTmp1                        ; Store the ASCII digit and advance Z
+    ld rTmp1, Z                         ; Read next BCD digit
+    dec rScratch0                       ; Still more BCD digits to go?
+    brne convertDwordToAscStr_3         ; Yes, go to top of this loop
 
-    pop rArgByte3                       ; Restore original value
-	pop rArgByte2
+    pop rArgByte3                       ; Restore original number
+    pop rArgByte2
     pop rArgByte1
     pop rArgByte0
 
-	ret
+    ret
 
 
 
@@ -1509,21 +1508,14 @@ convertDwordToBcdArray:
     ; Registers rArgByte3:rArgByte0 and Z passed in as arguments
     ; Result returned in 10-bytes starting where Z points
 
-    ; rArgByte3:rArgByte0   = 32-bit quantity to convert (not changed)
+    ; rArgByte3:rArgByte0   = 32-bit quantity to convert (changed)
     ; Z                     = pointer to first (highest) digit of BCD result
     ;                         (1 digit per byte, 10 bytes total, with leading zeros)
     ; rScratch2:rScratch1   = scratch registers sometimes used as a 16-bit quantity (changed)
 
-	push rArgByte0                         ; Save number
-	push rArgByte1
-    push rArgByte2
-    push rArgByte3
+    pushw Z                             ; Save Z
 
-    pushw Z                               ; Save Z
-
-
-
-    ldi rTmp1, Byte4( kDecimal_1e9 )      ; Start with 1,000,000,000
+    ldi rTmp1, Byte4( kDecimal_1e9 )    ; Start by multiples of 1,000,000,000
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e9 )
     mov rScratch2, rTmp1
@@ -1533,7 +1525,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e8 )      ; Next 100,000,000
+    ldi rTmp1, Byte4( kDecimal_1e8 )    ; Next multiples of 100,000,000
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e8 )
     mov rScratch2, rTmp1
@@ -1543,7 +1535,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e7 )      ; Next 10,000,000
+    ldi rTmp1, Byte4( kDecimal_1e7 )    ; Next multiples of 10,000,000
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e7 )
     mov rScratch2, rTmp1
@@ -1553,7 +1545,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e6 )      ; Next 1,000,000
+    ldi rTmp1, Byte4( kDecimal_1e6 )    ; Next multiples of 1,000,000
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e6 )
     mov rScratch2, rTmp1
@@ -1563,7 +1555,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e5 )      ; Next 100,000
+    ldi rTmp1, Byte4( kDecimal_1e5 )    ; Next multiples of 100,000
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e5 )
     mov rScratch2, rTmp1
@@ -1573,7 +1565,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e4 )      ; Next 10,000
+    ldi rTmp1, Byte4( kDecimal_1e4 )    ; Next multiples of 10,000
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e4 )
     mov rScratch2, rTmp1
@@ -1583,7 +1575,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e3 )      ; Next 1,000
+    ldi rTmp1, Byte4( kDecimal_1e3 )    ; Next multiples of 1,000
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e3 )
     mov rScratch2, rTmp1
@@ -1593,7 +1585,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e2 )      ; Next 100
+    ldi rTmp1, Byte4( kDecimal_1e2 )    ; Next multiples of 100
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e2 )
     mov rScratch2, rTmp1
@@ -1603,7 +1595,7 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    ldi rTmp1, Byte4( kDecimal_1e1 )      ; Next 10
+    ldi rTmp1, Byte4( kDecimal_1e1 )    ; Next multiples of 10
     mov rScratch3, rTmp1
     ldi rTmp1, Byte3( kDecimal_1e1 )
     mov rScratch2, rTmp1
@@ -1613,16 +1605,11 @@ convertDwordToBcdArray:
     mov rScratch0, rTmp1
     rcall getOneDecimalDigit
 
-    st Z, rArgByte0                       ; Remainder is just the ones
+    st Z, rArgByte0                     ; Remainder is just the ones
 
-	popw Z                                ; Restore Z to where it was (created 10 digits)
+    popw Z                              ; Restore Z
 
-	pop rArgByte3                         ; Restore original value
-	pop rArgByte2
-    pop rArgByte1
-    pop rArgByte0
-
-	ret
+    ret
 
 
 
@@ -1632,7 +1619,7 @@ convertDwordToBcdArray:
 
 getOneDecimalDigit:
 
-    ; Determine one decimal digit by continued subtraction of a binary decimal value
+    ; Determine one decimal digit by continued subtraction of a decimal value
 
     ; Registers rArgByte3:rArgByte0, rScratch3:rScratch0, and Z passed in as arguments
     ; Result returned where Z points; Z incremented, rArgByte3:rArgByte0 contains remainder
@@ -1642,30 +1629,30 @@ getOneDecimalDigit:
     ; rScratch3:rScratch0   = 32-bit binary decimal value (unchanged)
     ; rTmp1                 = Used
 
-	clr rTmp1                          ; digit count is zero
+    clr rTmp1                           ; Counts number of multiples subtracted, initialize to 0
 
 getOneDecimalDigit_1:
-	cp rArgByte3, rScratch3            ; Compare Byte3 to decimal byte
-	brcs getOneDecimalDigit_3          ; Byte3 smaller than decimal byte -> done (digit = 0)
-	brne getOneDecimalDigit_2          ; Byte3 bigger than decimal byte -> subtract
-	cp rArgByte2, rScratch2            ; Byte3 equal, so compare Byte2
-	brcs getOneDecimalDigit_3          ; Byte2 smaller than decimal -> done (digit = 0)
-    brne getOneDecimalDigit_2          ; Byte2 bigger than decimal byte -> subtract
-    cp rArgByte1, rScratch1            ; Byte2 equal, so compate Byte1
-    brcs getOneDecimalDigit_3          ; Byte1 smaller than decimal -> done (digit = 0)
-    brne getOneDecimalDigit_2          ; Byte1 bigger than decimal byte -> subtract
-    cp rArgByte0, rScratch0            ; Byte1 equal so compare Byte0
-    brcs getOneDecimalDigit_3          ; Byte0 smaller than decimal -> done (digit = 0)
+    cp rArgByte3, rScratch3             ; Compare Byte3 to decimal byte
+    brcs getOneDecimalDigit_3           ; Byte3 smaller than decimal byte -> done (digit = 0)
+    brne getOneDecimalDigit_2           ; Byte3 bigger than decimal byte -> subtract
+    cp rArgByte2, rScratch2             ; Byte3 equal, so compare Byte2
+    brcs getOneDecimalDigit_3           ; Byte2 smaller than decimal -> done (digit = 0)
+    brne getOneDecimalDigit_2           ; Byte2 bigger than decimal byte -> subtract
+    cp rArgByte1, rScratch1             ; Byte2 equal, so compate Byte1
+    brcs getOneDecimalDigit_3           ; Byte1 smaller than decimal -> done (digit = 0)
+    brne getOneDecimalDigit_2           ; Byte1 bigger than decimal byte -> subtract
+    cp rArgByte0, rScratch0             ; Byte1 equal so compare Byte0
+    brcs getOneDecimalDigit_3           ; Byte0 smaller than decimal -> done (digit = 0)
 
 getOneDecimalDigit_2:
-    sub rArgByte0, rScratch0           ; Subtract LSB decimal
-    sbc rArgByte1, rScratch1           ; Subtract LSB decimal
-    sbc rArgByte2, rScratch2           ; Subtract LSB decimal
-    sbc rArgByte3, rScratch3           ; Subtract LSB decimal
-	inc rTmp1                          ; Increment digit count
-	rjmp getOneDecimalDigit_1          ; Next loop -> try to subtract again
+    sub rArgByte0, rScratch0            ; Subtract the decimal value from the number
+    sbc rArgByte1, rScratch1
+    sbc rArgByte2, rScratch2
+    sbc rArgByte3, rScratch3
+    inc rTmp1                           ; Increment digit count
+    rjmp getOneDecimalDigit_1           ; Next loop back to try to subtract again
 
 getOneDecimalDigit_3:
-	st Z+, rTmp1                       ; Save digit and increment
+    st Z+, rTmp1                        ; Count of multiples subtracted is the digit, save and increment Z
 
 	ret
